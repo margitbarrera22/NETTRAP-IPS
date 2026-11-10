@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><title>Informe Clase 2 – Decisiones Técnicas</title>
+<style>
+  body{font-family:'Plus Jakarta Sans','Segoe UI',Arial,sans-serif;color:#1e293b;line-height:1.65;max-width:960px;margin:30px auto;padding:0 32px;background:#f8fafc;}
+  h1{color:#0f172a;border-bottom:3px solid #10b981;padding-bottom:12px;font-size:1.5rem;}
+  h2{color:#059669;margin-top:38px;border-bottom:1px solid #e2e8f0;padding-bottom:8px;font-size:1.15rem;}
+  h3{color:#0f172a;margin-top:24px;font-size:1rem;}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.9rem;}
+  th,td{border:1px solid #e2e8f0;padding:10px 12px;text-align:left;vertical-align:top;}
+  th{background:#0f172a;color:#fff;font-weight:600;font-size:.82rem;text-transform:uppercase;letter-spacing:.5px;}
+  .portada{background:#ecfdf5;border:1px solid #a7f3d0;border-left:4px solid #10b981;border-radius:8px;padding:22px 26px;margin:24px 0;}
+  .portada p{margin:6px 0;}
+  .portada strong{color:#0f172a;}
+  .nota{background:#fef3c7;border-left:4px solid #f59e0b;padding:12px 16px;border-radius:6px;font-size:.9rem;margin:18px 0;}
+  .bloque{margin:14px 0;padding:12px 16px;background:#f1f5f9;border-radius:6px;border-left:3px solid #10b981;}
+  .bloque strong{color:#0f172a;}
+</style></head>
+<body>
+
+<h1>Informe Clase 2 – Decisiones Técnicas</h1>
+
+<div class="portada">
+  <p><strong>OVA:</strong> Herramienta de Seguridad en Redes desde Cero – Clase 2</p>
+  <p><strong>Fecha:</strong> 27 de octubre de 2026</p>
+  <p><strong>Clase:</strong> 2 de 5</p>
+  <p><strong>Nota:</strong> Este informe se anexa al de la Clase 1. No lo reemplaza.</p>
+</div>
+
+<div class="nota"><strong>Regla:</strong> cada decisión técnica debe estar justificada. Si no puedes explicar por qué elegiste algo, la decisión no cuenta.</div>
+
+<h2>1. Decisión de lenguaje de programación</h2>
+<div class="bloque">
+  <p><strong>Lenguaje principal:</strong> Python</p>
+  <p><strong>Lenguaje secundario:</strong> JavaScript</p>
+  <p><strong>Justificación técnica:</strong><br>Se implementa una arquitectura desacoplada Full-Stack defensiva: Python opera en el Backend administrando los sockets señuelo multihilo, la ejecución controlada de netsh en Windows Firewall y las capturas forenses con TShark. JavaScript compone el Frontend en el navegador, consumiendo eventos en tiempo real mediante WebSockets y ofreciendo un Dashboard visual interactivo para la gestión de intrusiones, desbloqueo de IPs y descarga de archivos .pcap, dando estricto cumplimiento a los requisitos RF-04 y RF-05 de la Clase 1.</p>
+  <p><strong>Librerías clave:</strong><br>socket, threading, fastapi / flask, subprocess, ipaddress, json, JavaScript WebSockets API / Fetch API.</p>
+  <p><strong>Riesgos identificados:</strong><br>Saturación en el canal WebSocket: Ante escaneos masivos de Nmap, la mitigación en el Firewall de Windows se ejecuta de manera prioritaria en Python a nivel de sistema antes de despachar el evento al navegador, asegurando el bloqueo en milisegundos.<br><br>Prevención XSS en la interfaz: Toda IP y dato proveniente de la red se sanitiza en JavaScript antes de insertarse en el DOM (OWASP ASVS Control V5.3).</p>
+</div>
+
+<h2>2. Decisión de agente de IA para el desarrollo</h2>
+<div class="bloque">
+  <p><strong>¿Usarán agente de IA?:</strong> Sí</p>
+  <p><strong>Agente elegido:</strong> Ollama</p>
+  <p><strong>Justificación:</strong><br>Seleccionamos Ollama porque ejecuta modelos de lenguaje localmente en la máquina del equipo a costo cero (sin suscripciones a la nube como Google AI Ultra). Esto garantiza total privacidad de las reglas de cortafuegos y el código defensivo, además de permitir asistencia de programación en entornos de red y laboratorios cerrados sin depender de conexión a internet.</p>
+  <p><strong>¿Requiere conexión a internet?:</strong> No, es local</p>
+  <p><strong>Modelo(s):</strong> Qwen2.5-Coder (7B) o DeepSeek-Coder (6.7B)</p>
+</div>
+
+<h2>3. Componentes de infraestructura</h2>
+<table>
+  <thead><tr><th style="width:40px;">#</th><th>Componente</th><th>Función</th><th>Tecnología</th><th>Depende de</th></tr></thead>
+  <tbody><tr><td style="text-align:center;">1</td><td><strong>Módulo de Trampas (Honeypot Sockets)</strong></td><td>Abre y mantiene oyentes en puertos señuelo (21, 2222, 8080). Ante cualquier conexión o escaneo SYN, extrae la IP de origen, puerto y marca temporal, cerrando el socket de inmediato.</td><td>Python (socket, threading, select)</td><td>Ninguno</td></tr><tr><td style="text-align:center;">2</td><td><strong>Motor de Análisis y Correlación</strong></td><td>Valida la IP con ipaddress, verifica la lista blanca (Gateway/DNS) para mitigar Spoofing (ISO 27033-4 Cl. 9.2) y evalúa umbrales de escaneo Nmap para ordenar el aislamiento.</td><td>Python (ipaddress, queue, motor de reglas)</td><td>Módulo de Trampas</td></tr><tr><td style="text-align:center;">3</td><td><strong>Mitigación Activa en Firewall (AutoBan)</strong></td><td>Aplica reglas dinámicas de bloqueo en Windows Defender Firewall vía netsh advfirewall (action=block remoteip=&lt;IP&gt;) y gestiona el temporizador de cuarentena.</td><td>Python (subprocess) + netsh (Windows Firewall)</td><td>Motor de Análisis y Correlación</td></tr><tr><td style="text-align:center;">4</td><td><strong>Recolector Forense (.pcap Exporter)</strong></td><td>Invoca tshark.exe en segundo plano con filtro 'host &lt;IP&gt;' para volcar el tráfico de la agresión en un archivo .pcap con permisos restringidos para análisis en Wireshark (NIST SSDF PW.9.1).</td><td>TShark CLI (Wireshark 4.x + Npcap) + Python</td><td>Motor de Análisis y Correlación</td></tr><tr><td style="text-align:center;">5</td><td><strong>Motor de Análisis y Correlación</strong></td><td>Interfaz visual en navegador para el operador. Muestra tarjetas de estado de trampas, tabla de intrusiones en vivo vía WebSockets y botones de control (desbloquear IP, descargar PCAP).</td><td>JavaScript (WebSockets API) + HTML5/CSS + FastAPI/Flask</td><td>Motor de Análisis y Mitigación Activa</td></tr></tbody>
+</table>
+
+<h2>4. Flujo principal de datos</h2><div class="bloque"><p>Un atacante lanza un escaneo de reconocimiento con Nmap (nmap -sS -p-) hacia la máquina Windows → El Módulo de Trampas detecta el intento de conexión en un puerto señuelo (ej. 21 o 2222), extrae la IP atacante y cierra el socket de inmediato → El evento pasa a la cola del Motor de Análisis, que valida la sintaxis de la IP con ipaddress y comprueba la lista blanca (Gateway/DNS) para prevenir DoS por spoofing → Confirmada la intrusión, el motor activa dos acciones simultáneas: 1) El Módulo de Mitigación ejecuta netsh advfirewall insertando la regla de bloqueo inmediato (action=block), cortando el tráfico hostil en milisegundos; 2) El Recolector Forense dispara tshark.exe en segundo plano para generar el volcado evidencia__.pcap → Finalmente, el backend emite el evento vía WebSocket hacia el Dashboard en el navegador, donde JavaScript dibuja la alerta visual en la tabla en tiempo real, emite una notificación emergente del sistema y activa los botones de control para desbloquear la IP o abrir el análisis en Wireshark.</p></div>
+
+
+
+<h2>6. Declaración de cierre</h2>
+<p>El equipo declara que las decisiones técnicas aquí registradas fueron discutidas y justificadas, y que son coherentes con el alcance definido en la Clase 1.</p>
+
+</body></html>

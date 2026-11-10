@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><title>Informe Clase 1 – CyberDefender</title>
+<style>
+  body{font-family:'Plus Jakarta Sans','Segoe UI',Arial,sans-serif;color:#1e293b;line-height:1.65;max-width:960px;margin:30px auto;padding:0 32px;background:#f8fafc;}
+  h1{color:#0f172a;border-bottom:3px solid #10b981;padding-bottom:12px;font-size:1.5rem;}
+  h2{color:#059669;margin-top:38px;border-bottom:1px solid #e2e8f0;padding-bottom:8px;font-size:1.15rem;}
+  h3{color:#0f172a;margin-top:24px;font-size:1rem;}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.9rem;}
+  th,td{border:1px solid #e2e8f0;padding:10px 12px;text-align:left;vertical-align:top;}
+  th{background:#0f172a;color:#fff;font-weight:600;font-size:.82rem;text-transform:uppercase;letter-spacing:.5px;}
+  .portada{background:#ecfdf5;border:1px solid #a7f3d0;border-left:4px solid #10b981;border-radius:8px;padding:22px 26px;margin:24px 0;}
+  .portada p{margin:6px 0;}
+  .portada strong{color:#0f172a;}
+  .nota{background:#fef3c7;border-left:4px solid #f59e0b;padding:12px 16px;border-radius:6px;font-size:.9rem;margin:18px 0;}
+  .firma{margin-top:50px;display:flex;gap:60px;flex-wrap:wrap;}
+  .firma div{flex:1;min-width:200px;text-align:center;}
+  .firma .linea{border-top:1px solid #1e293b;margin-top:50px;padding-top:8px;font-size:.85rem;}
+  .bloque{margin:14px 0;padding:12px 16px;background:#f1f5f9;border-radius:6px;border-left:3px solid #10b981;}
+  .bloque strong{color:#0f172a;}
+  code{background:#e2e8f0;padding:2px 6px;border-radius:4px;font-family:monospace;font-size:.85em;}
+</style></head>
+<body>
+
+<h1>Informe Clase 1 – Ficha de Idea y Alcance</h1>
+
+<div class="portada">
+  <p><strong>OVA:</strong> Herramienta de Seguridad en Redes desde Cero – Guía 4h</p>
+  <p><strong>Equipo:</strong> CyberDefender</p>
+  <p><strong>Herramienta:</strong> NetTrap-IPS</p>
+  <p><strong>Fecha:</strong> 20 de octubre de 2026</p>
+  <p><strong>Clase:</strong> 1 de 5</p>
+</div>
+
+<div class="nota"><strong>Regla:</strong> todo entregable cita al menos una cláusula o control de ISO/IEC 27033, NIST SP 800-218 (SSDF) u OWASP ASVS.</div>
+
+<h2>1. Integrantes</h2>
+<table><thead><tr><th style="width:50px;">#</th><th>Cédula</th><th>Nombre</th></tr></thead><tbody><tr><td style="text-align:center;">1</td><td>1096802414</td><td>Michel Daniela Bayona Diaz</td></tr><tr><td style="text-align:center;">2</td><td>1014189353</td><td>Margit Dayanna Barrera Gutierréz</td></tr><tr><td style="text-align:center;">3</td><td>1092528951</td><td>Said Alexander Pacheco Moncada</td></tr></tbody></table>
+
+<h2>2. Entregable 1 · Ficha de Idea y Alcance</h2>
+<div class="bloque">
+  <p><strong>Herramienta:</strong> NetTrap-IPS</p>
+  <p><strong>Problema que resuelve:</strong><br>Centralizar la recolección de eventos de tráfico anómalo en una red local con Windows, correlacionar escaneos de reconocimiento en tiempo real y automatizar el aislamiento en el firewall antes de que se consume una intrusión.</p>
+  <p><strong>Tipo:</strong> Analizador de logs de red</p>
+  <p><strong>Alcance:</strong><br>1. Monitoreo constante y escucha activa en puertos trampa (señuelos) para registrar de inmediato cualquier intento de conexión.<br>2. Motor de correlación en tiempo real para detectar patrones de escaneo rápido (SYN scan con Nmap) y accesos no autorizados.<br>3. Respuesta automatizada de contención aplicando reglas dinámicas Allow/Deny en Windows Defender Firewall (lógica practicada en natted.cloud).<br>4. Registro forense centralizado e invocación de TShark para exportar capturas .pcap asociadas a cada incidente crítico detectado.</p>
+  <p><strong>Exclusiones:</strong><br>1. No dejará que el atacante interactúe a fondo (No es un servidor falso completo):<br>La trampa no es un sistema operativo vulnerable donde el atacante pueda subir archivos o ejecutar comandos de verdad. Solo abre el puerto, detecta que tocaron la puerta, captura la IP y cuelga la llamada de inmediato.<br><br>2. No descifrará tráfico web seguro (No rompe TLS/HTTPS):<br>La herramienta vigila qué IP se conecta y a qué puerto llama, pero no va a descifrar conversaciones seguras o contraseñas encriptadas por dentro (no hace inspección profunda de paquetes).<br><br>3. No protege toda la red de la universidad, solo el equipo donde corre:<br>No va a cambiar las configuraciones de los routers Cisco ni los switches del laboratorio. Solo controla el Firewall de Windows del computador donde está instalado el programa.</p>
+</div>
+
+<h2>3. Entregable 2 · 5 Requisitos Normativos</h2>
+<table><thead><tr><th style="width:40px;">#</th><th>Norma / Cláusula</th><th>Requisito</th><th>Justificación</th></tr></thead><tbody><tr><td style="text-align:center;">1</td><td>ISO/IEC 27033-1 Cl. 10.3</td><td>Registro y monitoreo continuo de eventos de seguridad de red para auditoría e identificación de anomalías.</td><td>El motor central del mini-SIEM almacena cronológicamente cada intento de conexión con IP, puerto y marca temporal.</td></tr><tr><td style="text-align:center;">2</td><td>NIST SP 800-218 (SSDF) PW.9.1</td><td>NIST SP 800-218 (SSDF) PW.9.1</td><td>Toda alerta genera un log estructurado local y despacha un archivo forense .pcap sin permitir sobreescritura.</td></tr><tr><td style="text-align:center;">3</td><td>ISO/IEC 27033-4 Cl. 9.2</td><td>Aplicación de reglas de control de acceso y políticas de aislamiento (default-deny) ante tráfico no autorizado.</td><td>Traslada las políticas Allow/Deny y el orden de reglas visto en natted.cloud hacia Windows Defender Firewall mediante comandos netsh.</td></tr><tr><td style="text-align:center;">4</td><td>OWASP ASVS v5.0 Control V5.1.1</td><td>Validación sintáctica y sanitización de todas las entradas y parámetros recibidos de la red antes de su procesamiento.</td><td>Las direcciones IP detectadas se validan con la librería ipaddress de Python antes de pasarse a comandos del sistema operativo.</td></tr><tr><td style="text-align:center;">5</td><td>OWASP ASVS v5.0 Control V7.4.1</td><td>Manejo seguro de excepciones que evite divulgar información técnica o interrumpir el monitoreo del sistema.</td><td>Si una conexión o socket falla, el SIEM captura la excepción sin exponer trazas internas ni detener los demás módulos.</td></tr></tbody></table>
+
+<h2>4. Entregable 3 · Requisitos de Seguridad</h2>
+<h3>4.1. Funcionales</h3>
+<div class="bloque">RF-01 Recolectar eventos desde al menos 3 fuentes distintas: Windows Event Log (canales Security y System), Firewall de Windows y Nmap/TShark.                                                                                                                                                                          <br>Ingesta de eventos de las 3 fuentes en tiempo real y visualización en el dashboard en menos de 5 segundos desde su generación.<br><br>RF-02 Normalizar todos los eventos a un formato único (JSON) con los campos obligatorios: timestamp, origen, severidad, evento, ip_origen y descripcion.  <br> Todo evento almacenado en la base de datos cumple el esquema JSON definido. Los eventos mal formados se rechazan y se registran en un log de errores.<br><br>RF-03 Correlacionar eventos mediante reglas configurables en formato YAML (ej.: &quot;5 fallos de login desde la misma IP en 60 segundos → alerta crítica&quot;).   <br>El motor evalúa cada evento entrante contra las reglas activas y genera una alerta cuando se cumple la condición definida.<br><br>RF-04 El SIEM debe alertar al administrador en tiempo real a través de notificaciones en el propio dashboard/sistema desarrollado (vía WebSockets / Server-Sent Events o push nativo) cuando se dispare una regla de severidad 'alta' o 'crítica' <br>La notificación emerge en la interfaz del dashboard en menos de 3 segundos e incluye: IP, evento, severidad y hora<br><br>RF-05 Exponer un dashboard web con autenticación que muestre eventos recientes, estadísticas por fuente/severidad y reglas activas.   <br>El dashboard solo es accesible tras login válido y refresca los datos cada 10 segundos sin recargar la página.</div>
+<h3>4.2. No funcionales</h3>
+<table><thead><tr><th style="width:22%;">Categoría</th><th>Requisito</th><th style="width:20%;">Norma</th></tr></thead><tbody><tr><td><strong>Cifrado en tránsito</strong></td><td>El dashboard web se sirve
+exclusivamente sobre HTTPS
+con TLS 1.2 o superior
+(certificado autofirmado
+generado con OpenSSL). Las
+conexiones en tiempo real para
+notificaciones del sistema (vía
+WebSockets / SSE) utilizan
+cifrado TLS nativo. Se
+deshabilitan cipher suites débiles
+(RC4, 3DES).</td><td>OWASP ASVS V9.1.1 / V9.1.2</td></tr><tr><td><strong>Cifrado en reposo</strong></td><td>La contraseña del administrador
+se almacena con Argon2id (no
+en texto plano ni MD5/SHA1).
+Los archivos .pcap y la base de
+datos SQLite se guardan en una
+carpeta con ACL de Windows
+restringida únicamente al grupo
+Administradores.</td><td>OWASP ASVS V2.4.3 / ISO 27033</td></tr><tr><td><strong>Autenticación y sesiones</strong></td><td>Login con usuario y contraseña.
+Sesiones con tokens aleatorios
+de 32 bytes, expiración de 30
+minutos de inactividad, cookies
+marcadas como HttpOnly,
+Secure y SameSite=Strict.
+Bloqueo de cuenta tras 5
+intentos fallidos durante 15
+minutos.</td><td>OWASP ASVS V2.1 / V3.1 / V3.2</td></tr><tr><td><strong>Logging de auditoría</strong></td><td>Se registran todas las acciones
+críticas: login exitoso/fallido,
+creación/edición de reglas,
+inicio/detención del servicio,
+emisión de alertas y cambios en
+configuración. Los logs son
+append-only (no editables ni
+borrables por usuarios normales)
+y se guardan en un archivo
+separado con hash de
+integridad.</td><td>OWASP ASVS V8.1.1 / ISO 27033</td></tr><tr><td><strong>Manejo de errores</strong></td><td>Las excepciones internas se
+registran en un log privado
+(errors.log). Al usuario final solo
+se le muestra un mensaje
+genérico (&amp;quot;Ocurrió un error.
+Contacte al administrador&amp;quot;).
+Nunca se exponen stack traces,
+rutas de archivos ni nombres de
+variables internas en el
+dashboard o respuestas HTTP.</td><td>OWASP ASVS V7.1.1 / V7.4.1</td></tr><tr><td><strong>Validación de entradas</strong></td><td>Todo dato recibido (logs,
+parámetros HTTP, reglas YAML,
+datos del formulario de
+configuración) se valida
+sintáctica y semánticamente
+antes de procesarse. Las IPs se
+validan con regex estricta
+(IPv4/IPv6). Las reglas YAML se
+validan con esquema
+(jsonschema). Se aplica whitelist
+(no blacklist) y se escapan
+salidas HTML para prevenir XSS.</td><td>OWASP ASVS V5.1.1 / V5.2 / V5.3</td></tr></tbody></table>
+
+<h2>5. Entregable 4 · Roles del equipo</h2>
+<table><thead><tr><th style="width:22%;">Rol</th><th style="width:28%;">Integrante</th><th>Responsabilidad</th></tr></thead><tbody><tr><td><strong>Líder técnico</strong></td><td>Said Alexander Pacheco Moncada — C.C. 1092528951</td><td>Diseña la arquitectura del mini-SIEM, coordina la sincronización entre el motor de correlación en Python, netsh y TShark, y valida las metas semanales.</td></tr><tr><td><strong>Responsable de seguridad</strong></td><td>Michel Daniela Bayona Diaz — C.C. 1096802414</td><td>Supervisa el cumplimiento de los controles de ISO 27033, NIST SSDF y OWASP ASVS, y audita las reglas de mitigación en Windows Defender Firewall.</td></tr><tr><td><strong>Documentador</strong></td><td>Said Alexander Pacheco Moncada — C.C. 1092528951</td><td>Estructura el informe técnico, documenta las pruebas forenses generadas con Wireshark y consolida las citas normativas de cada entrega.</td></tr><tr><td><strong>Desarrollador(es)</strong></td><td>Margit Dayanna Barrera Gutierréz — C.C. 1014189353</td><td>Programa el módulo de recolección de eventos multihilo, la automatización de comandos netsh y ejecuta las pruebas de escaneo con Nmap.</td></tr></tbody></table>
+
+<h2>6. Entregable 4 · Modelo STRIDE</h2>
+<table><thead><tr><th style="width:40px;">#</th><th>Tipo</th><th>Activo</th><th>Amenaza</th><th>Control</th><th>Norma</th></tr></thead><tbody><tr><td style="text-align:center;">1</td><td>S · Spoofing</td><td>Motor de ingesta de eventos</td><td>Un atacante envía paquetes con IP de origen falsificada (IP spoofing) para engañar al SIEM y provocar el bloqueo de la puerta de enlace (Gateway) o DNS legítimo.</td><td>Lista blanca (whitelist) estricta que excluye la IP del gateway, DNS y localhost antes de disparar cualquier regla de bloqueo.</td><td>ISO 27033-4 Cl. 9.2</td></tr><tr><td style="text-align:center;">2</td><td>T · Tampering</td><td>Archivo de logs y reglas del firewall</td><td>Manipulación o borrado de los registros de auditoría o inyección de caracteres maliciosos en la orden de bloqueo netsh.</td><td>Validación estricta con módulo ipaddress, ejecución de comandos en lista estructurada y almacenamiento de logs en modo append-only.</td><td>OWASP ASVS V5.1.1</td></tr><tr><td style="text-align:center;">3</td><td>I · Information disclosure</td><td>OWASP ASVS V5.1.1</td><td>Acceso no autorizado al tráfico sensible capturado por TShark almacenado en directorios compartidos del equipo.</td><td>Almacenamiento de las capturas en una carpeta con permisos NTFS restringidos exclusivamente al perfil de Administrador.</td><td>OWASP ASVS V9.2</td></tr><tr><td style="text-align:center;">4</td><td>D · Denial of service</td><td>Cola de correlación del SIEM</td><td>Inundación masiva de eventos falsos (SYN Flood) diseñada para saturar la memoria del script y bloquear el motor de detección.</td><td>Manejo de colas con límite de tamaño (buffer limit), timeouts de 500 ms y aislamiento inmediato de la IP hostil tras el primer umbral.</td><td>ISO 27033-1 Cl. 10.2</td></tr></tbody></table>
+
+<h2>7. Conclusiones y próximos pasos</h2>
+<div class="bloque">
+  <p><strong>¿Qué aprendió el equipo?</strong><br>El equipo aprendió a fundamentar la arquitectura y el alcance de una herramienta de defensa activa  utilizando normas internacionales de seguridad. Comprendimos cómo respaldar la respuesta automatizada en Windows Firewall (mediante comandos netsh) y la captura de evidencia forense en archivos .pcap (mediante tshark.exe) con controles específicos de ISO/IEC 27033, NIST SP 800-218 (SSDF)</p>
+  <p><strong>Próximos pasos Clase 2:</strong><br>1. Dibujar el diagrama de arquitectura del sistema especificando los componentes multihilo y los límites de confianza entre la red local, los sockets señuelo, la consola local y los procesos de Windows (netsh y tshark.exe).   <br><br>2.Diseñar e implementar las expresiones regulares (regex) para la validación y sanitización estricta de la dirección IP obtenida de los sockets antes de ejecutar comandos.   <br><br>3.Ampliar el modelo de amenazas STRIDE a 6 escenarios específicos y definir el mecanismo de temporizador para la liberación o caducidad de las reglas de bloqueo en el firewall local. <br>4. Definir controles de seguridad y permisos restringidos en el sistema de archivos local para proteger los registros de eventos y las capturas .pcap.</p>
+  
+</div>
+
+<h2>8. Declaración de cierre</h2>
+<p>El equipo declara que el alcance aquí definido fue discutido y validado durante la sesión, y que los entregables citan al menos una cláusula o control normativo.</p>
+
+<div class="firma">
+  <div><div class="linea">Firma del líder técnico</div></div>
+  <div><div class="linea">Firma del docente</div></div>
+</div>
+
+</body></html>

@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetTrap-IPS · SOC Enterprise Threat Defense</title>
+
+  <!-- Tailwind CSS & Google Fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+            },
+            dark: {
+              bg: '#080c14',
+              surface: '#0f172a',
+              card: '#131e33',
+              border: '#1e293b',
+              accent: '#1e2d4a'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #080c14;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.07) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.05) 0px, transparent 50%);
+      color: #f1f5f9;
+    }
+    .glass-panel {
+      background: rgba(19, 30, 51, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #0b111e;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #25334d;
+      border-radius: 4px;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.5; }
+    }
+    .animate-pulse-dot {
+      animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       BARRA SUPERIOR (HEADER)
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <header class="glass-panel sticky top-0 z-50 border-b border-dark-border px-6 py-3.5 flex items-center justify-between">
+    <!-- Brand -->
+    <div class="flex items-center gap-4">
+      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 p-0.5 shadow-lg shadow-emerald-500/20 flex items-center justify-center">
+        <div class="h-full w-full bg-dark-bg rounded-[10px] flex items-center justify-center text-emerald-400 font-bold text-lg">
+          🛡️
+        </div>
+      </div>
+      <div>
+        <div class="flex items-center gap-2.5">
+          <h1 class="text-lg font-extrabold tracking-tight text-white flex items-center gap-2">
+            NetTrap<span class="text-emerald-400">IPS</span>
+          </h1>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold tracking-wide">
+            ENTERPRISE SOC v2.4
+          </span>
+        </div>
+        <p class="text-xs text-slate-400 font-medium">CyberDefender · Mitigación Activa NIST & Captura Forense</p>
+      </div>
+    </div>
+
+    <!-- Pestañas de Navegación -->
+    <nav class="hidden md:flex items-center gap-1 bg-dark-surface/80 p-1.5 rounded-xl border border-dark-border">
+      <button onclick="switchTab('tab-soc')" id="btn-tab-soc" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 transition-all flex items-center gap-2">
+        <span>📊</span> Centro de Operaciones (SOC)
+      </button>
+      <button onclick="switchTab('tab-simulator')" id="btn-tab-simulator" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-2">
+        <span>🎯</span> Simulador de Ataques
+      </button>
+      <button onclick="switchTab('tab-firewall')" id="btn-tab-firewall" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-2">
+        <span>🔒</span> AutoBan Firewall (<span id="tab-blocked-badge">0</span>)
+      </button>
+      <button onclick="switchTab('tab-cves')" id="btn-tab-cves" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-2">
+        <span>📋</span> Matriz NIST CVEs
+      </button>
+    </nav>
+
+    <!-- Estado y Sesión -->
+    <div class="flex items-center gap-4">
+      <!-- WebSocket Indicator -->
+      <div id="ws-status" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono font-medium">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-dot"></span>
+        <span id="ws-text">WS ONLINE</span>
+      </div>
+
+      <!-- Reloj Local -->
+      <div class="hidden lg:block text-right font-mono text-[11px] text-slate-400 leading-tight">
+        <div id="clock-local" class="text-slate-200 font-semibold">--:--:--</div>
+        <div class="text-[9px] text-slate-500">DEFENSA ACTIVA</div>
+      </div>
+
+      <!-- User Profile -->
+      <div class="flex items-center gap-3 pl-2 border-l border-dark-border">
+        <div class="text-right hidden sm:block">
+          <div class="text-xs font-semibold text-white">{{ user }}</div>
+          <div class="text-[10px] text-emerald-400 font-mono">SOC_ADMIN</div>
+        </div>
+        <a href="/logout" title="Cerrar Sesión" class="p-2 rounded-lg bg-dark-surface border border-dark-border hover:bg-red-500/10 hover:border-red-500/30 text-slate-400 hover:text-red-400 transition-colors text-xs flex items-center justify-center">
+          ✕
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       CONTENIDO PRINCIPAL
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <main class="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6">
+
+    <!-- ═════════════════════════════════════════════════════════════════════
+         PESTAÑA 1: SOC DASHBOARD (CENTRO DE OPERACIONES)
+         ═════════════════════════════════════════════════════════════════════ -->
+    <div id="tab-soc" class="tab-content space-y-6">
+
+      <!-- Fila 1: Métricas Críticas (KPIs) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- KPI: Nivel de Amenaza DEFCON -->
+        <div class="glass-panel rounded-2xl p-4 relative overflow-hidden border-l-4 border-l-emerald-500">
+          <div class="flex items-center justify-between text-slate-400 text-xs uppercase tracking-wider font-semibold">
+            <span>Nivel de Amenaza</span>
+            <span class="text-lg">🛡️</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-2">
+            <span id="kpi-defcon" class="text-2xl font-black text-emerald-400 tracking-tight font-mono">NORMAL</span>
+            <span class="text-xs text-slate-500 font-mono">DEFCON 5</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">Puertos señuelo bajo vigilancia constante</p>
+          <div class="mt-3 w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+            <div id="defcon-bar" class="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" style="width: 20%"></div>
+          </div>
+        </div>
+
+        <!-- KPI: Alertas Correlacionadas -->
+        <div class="glass-panel rounded-2xl p-4 relative overflow-hidden border-l-4 border-l-rose-500">
+          <div class="flex items-center justify-between text-slate-400 text-xs uppercase tracking-wider font-semibold">
+            <span>Alertas Correlacionadas</span>
+            <span class="text-lg">⚡</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-2">
+            <span id="kpi-alerts-total" class="text-2xl font-black text-rose-400 tracking-tight font-mono">0</span>
+            <span class="text-xs text-rose-500/80 font-mono font-semibold">CRITICAL / HIGH</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">Evaluadas por motor de ventana deslizante</p>
+          <div class="mt-3 flex items-center justify-between text-[10px] text-slate-500 font-mono">
+            <span>Reglas YAML: 4 activas</span>
+            <span class="text-rose-400 font-semibold">ISO 27033-1</span>
+          </div>
+        </div>
+
+        <!-- KPI: IPs en Cuarentena -->
+        <div class="glass-panel rounded-2xl p-4 relative overflow-hidden border-l-4 border-l-amber-500">
+          <div class="flex items-center justify-between text-slate-400 text-xs uppercase tracking-wider font-semibold">
+            <span>Aislamiento Firewall</span>
+            <span class="text-lg">🔒</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-2">
+            <span id="kpi-blocked-total" class="text-2xl font-black text-amber-400 tracking-tight font-mono">0</span>
+            <span class="text-xs text-slate-400 font-mono">IPs Activas</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">Reglas dinámicas netsh advfirewall</p>
+          <div class="mt-3 flex items-center justify-between text-[10px] text-slate-500 font-mono">
+            <span>Timeout: 300s</span>
+            <span class="text-amber-400">AutoBan Activo</span>
+          </div>
+        </div>
+
+        <!-- KPI: Telemetría Honeypot -->
+        <div class="glass-panel rounded-2xl p-4 relative overflow-hidden border-l-4 border-l-cyan-500">
+          <div class="flex items-center justify-between text-slate-400 text-xs uppercase tracking-wider font-semibold">
+            <span>Paquetes Interceptados</span>
+            <span class="text-lg">📡</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-2">
+            <span id="kpi-events-total" class="text-2xl font-black text-cyan-400 tracking-tight font-mono">0</span>
+            <span class="text-xs text-slate-500 font-mono">Eventos Red</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">Ingesta multihilo en puertos trampa</p>
+          <div class="mt-3 flex items-center justify-between text-[10px] text-slate-500 font-mono">
+            <span>Buffer Limit: 1000</span>
+            <span class="text-cyan-400">OWASP ASVS V5.1</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Fila 2: Gráficos de Telemetría + Estado de Sockets Trampa -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Gráfico en Vivo (Chart.js) -->
+        <div class="glass-panel rounded-2xl p-5 lg:col-span-2 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                <span>📈</span> Flujo de Tráfico y Correlación en Vivo
+              </h2>
+              <p class="text-xs text-slate-400">Tasa de eventos capturados por segundo y alertas disparadas</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-mono">
+              REAL-TIME SYNC
+            </span>
+          </div>
+          <div class="h-56 w-full">
+            <canvas id="trafficChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Estado de Trampas (Puertos Señuelo) -->
+        <div class="glass-panel rounded-2xl p-5 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-bold text-white flex items-center gap-2">
+              <span>🪤</span> Sockets Señuelo Activos
+            </h2>
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          </div>
+          <p class="text-xs text-slate-400 mb-4">Escucha activa en sockets TCP multihilo listos para captura de IP</p>
+
+          <div class="space-y-2.5 flex-1" id="honeypot-grid">
+            <!-- Port 21 -->
+            <div class="p-3 rounded-xl bg-dark-surface/60 border border-dark-border flex items-center justify-between hover:border-emerald-500/30 transition-all">
+              <div class="flex items-center gap-3">
+                <span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 font-mono text-xs font-bold">PORT 21</span>
+                <div>
+                  <div class="text-xs font-semibold text-white">FTP-Trap</div>
+                  <div class="text-[10px] text-slate-400 font-mono">Mitiga CVE-2015-3306</div>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">ESCUCHANDO</span>
+            </div>
+
+            <!-- Port 2222 -->
+            <div class="p-3 rounded-xl bg-dark-surface/60 border border-dark-border flex items-center justify-between hover:border-amber-500/30 transition-all">
+              <div class="flex items-center gap-3">
+                <span class="px-2 py-1 rounded bg-amber-500/10 text-amber-400 font-mono text-xs font-bold">PORT 2222</span>
+                <div>
+                  <div class="text-xs font-semibold text-white">SSH-Trap</div>
+                  <div class="text-[10px] text-slate-400 font-mono">Mitiga CVE-2023-38408</div>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">ESCUCHANDO</span>
+            </div>
+
+            <!-- Port 8080 -->
+            <div class="p-3 rounded-xl bg-dark-surface/60 border border-dark-border flex items-center justify-between hover:border-blue-500/30 transition-all">
+              <div class="flex items-center gap-3">
+                <span class="px-2 py-1 rounded bg-blue-500/10 text-blue-400 font-mono text-xs font-bold">PORT 8080</span>
+                <div>
+                  <div class="text-xs font-semibold text-white">HTTP-Trap</div>
+                  <div class="text-[10px] text-slate-400 font-mono">Mitiga CVE-2021-44228 (Log4j)</div>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">ESCUCHANDO</span>
+            </div>
+
+            <!-- Port 3389 -->
+            <div class="p-3 rounded-xl bg-dark-surface/60 border border-dark-border flex items-center justify-between hover:border-purple-500/30 transition-all">
+              <div class="flex items-center gap-3">
+                <span class="px-2 py-1 rounded bg-purple-500/10 text-purple-400 font-mono text-xs font-bold">PORT 3389</span>
+                <div>
+                  <div class="text-xs font-semibold text-white">RDP-Trap</div>
+                  <div class="text-[10px] text-slate-400 font-mono">Mitiga CVE-2019-0708 (BlueKeep)</div>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">ESCUCHANDO</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Fila 3: Tabla de Alertas en Tiempo Real -->
+      <div class="glass-panel rounded-2xl p-5 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <span>🚨</span> Feed de Alertas de Seguridad y Detecciones
+              <span id="alert-counter-badge" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-rose-500/20 text-rose-400 border border-rose-500/30 font-semibold">0 eventos</span>
+            </h2>
+            <p class="text-xs text-slate-400">Intrusiones correlacionadas y acciones tomadas por el cortafuegos</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="text" id="filter-ip" onkeyup="filterAlertsTable()" placeholder="Filtrar por IP..." class="px-3 py-1.5 rounded-lg bg-dark-surface border border-dark-border text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-mono">
+            <button onclick="fetchAlertsHistory()" class="px-3 py-1.5 rounded-lg bg-dark-surface border border-dark-border hover:bg-slate-800 text-xs text-slate-300 font-medium transition-colors flex items-center gap-1.5">
+              <span>🔄</span> Refrescar
+            </button>
+            <button onclick="clearAlertsView()" class="px-3 py-1.5 rounded-lg bg-dark-surface border border-dark-border hover:bg-slate-800 text-xs text-slate-400 font-medium transition-colors">
+              Limpiar Vista
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-dark-border">
+          <table class="w-full text-left text-xs border-collapse" id="alerts-table">
+            <thead>
+              <tr class="bg-dark-surface/90 border-b border-dark-border text-slate-400 font-mono text-[11px] uppercase">
+                <th class="py-3 px-4">Hora Local</th>
+                <th class="py-3 px-4">Severidad</th>
+                <th class="py-3 px-4">IP Atacante</th>
+                <th class="py-3 px-4">Trampa / Puerto</th>
+                <th class="py-3 px-4">Regla Activada</th>
+                <th class="py-3 px-4">CVE Mitigado</th>
+                <th class="py-3 px-4">Estado Firewall</th>
+                <th class="py-3 px-4 text-right">Evidencia Forense</th>
+              </tr>
+            </thead>
+            <tbody id="alerts-tbody" class="divide-y divide-dark-border font-sans">
+              <tr id="empty-alerts-row">
+                <td colspan="8" class="text-center py-10 text-slate-500 font-mono text-xs">
+                  📡 Sistema en guardia. Sin agresiones activas detectadas en los últimos minutos.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Fila 4: Terminal de Telemetría en Vivo (Live Stream) -->
+      <div class="glass-panel rounded-2xl p-5 space-y-2">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="flex gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-500/80"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-500/80"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></span>
+            </div>
+            <h3 class="text-xs font-mono font-bold text-slate-300 ml-2">TERMINAL DE TELEMETRÍA FORENSE & CORRELACIÓN</h3>
+          </div>
+          <span class="text-[10px] font-mono text-slate-500">AUTO-SCROLL ENABLED</span>
+        </div>
+        <div id="live-console" class="h-32 rounded-xl bg-[#040711] border border-dark-border p-3 font-mono text-[11px] text-emerald-400 overflow-y-auto space-y-1 custom-scrollbar">
+          <div class="text-slate-500">[INIT] NetTrap-IPS Core Engine inicializado correctamente.</div>
+          <div class="text-slate-500">[FIREWALL] Subproceso netsh advfirewall enlazado a Windows Defender.</div>
+          <div class="text-slate-500">[CORRELATOR] 4 reglas YAML cargadas. Ventanas temporales operativas.</div>
+        </div>
+      </div>
+
+    </div>
+
+
+    <!-- ═════════════════════════════════════════════════════════════════════
+         PESTAÑA 2: SIMULADOR DE ATAQUES (RED TEAM CONSOLE)
+         ═════════════════════════════════════════════════════════════════════ -->
+    <div id="tab-simulator" class="tab-content hidden space-y-6">
+
+      <!-- Header del simulador -->
+      <div class="glass-panel rounded-2xl p-6 border-l-4 border-l-rose-500">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <span>🎯</span> Consola de Pruebas de Intrusión (Red Team Simulator)
+            </h2>
+            <p class="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+              Permite demostrar al docente en vivo cómo NetTrap-IPS detecta, correlaciona y aísla en el Firewall de Windows los vectores de ataque más comunes sin necesidad de ejecutar herramientas complejas desde consola externa.
+            </p>
+          </div>
+          <button onclick="triggerMassiveAttack(this)" class="px-5 py-3 rounded-xl bg-gradient-to-r from-rose-600 to-red-500 hover:from-rose-500 hover:to-red-400 font-bold text-white text-xs tracking-wide shadow-lg shadow-rose-600/30 flex items-center justify-center gap-2 transition-all">
+            <span>💥</span> DISPARAR ATAQUE MASIVO APT
+          </button>
+        </div>
+      </div>
+
+      <!-- Tarjetas de Escenarios de Ataque -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+
+        <!-- Escenario 1: Nmap SYN Scan -->
+        <div class="glass-panel rounded-2xl p-5 border border-dark-border hover:border-emerald-500/40 transition-all flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-2xl">🔍</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 font-bold">RULE-001</span>
+            </div>
+            <h3 class="text-sm font-bold text-white mt-3">Nmap SYN Port Scan</h3>
+            <p class="text-xs text-slate-400 mt-1">Escaneo rápido de reconocimiento de puertos en la red local.</p>
+            
+            <div class="mt-3 p-2.5 rounded-lg bg-dark-surface/80 border border-dark-border text-[11px] font-mono space-y-1">
+              <div class="text-slate-400">Objetivo: <span class="text-emerald-400">RDP Trampa (3389)</span></div>
+              <div class="text-slate-400">CVE Mitigado: <span class="text-rose-400 font-bold">CVE-2019-0708</span></div>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-dark-border space-y-3">
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-slate-400 font-mono text-[11px]">Ráfagas: 5 paquetes</span>
+            </div>
+            <button onclick="launchSimulatedAttack('Nmap SYN Recon', 3389, 'RDP-Trap', 5, '192.168.1.105', this)" class="w-full py-2 px-3 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-semibold text-xs transition-all flex items-center justify-center gap-2">
+              <span>▶</span> Simular Reconocimiento
+            </button>
+          </div>
+        </div>
+
+        <!-- Escenario 2: FTP Brute Force -->
+        <div class="glass-panel rounded-2xl p-5 border border-dark-border hover:border-rose-500/40 transition-all flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-2xl">🐟</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-rose-500/10 text-rose-400 font-bold">RULE-002</span>
+            </div>
+            <h3 class="text-sm font-bold text-white mt-3">FTP ProFTPd Brute-Force</h3>
+            <p class="text-xs text-slate-400 mt-1">Intentos repetidos de autenticación y explotación mod_copy.</p>
+            
+            <div class="mt-3 p-2.5 rounded-lg bg-dark-surface/80 border border-dark-border text-[11px] font-mono space-y-1">
+              <div class="text-slate-400">Objetivo: <span class="text-rose-400">FTP Trampa (21)</span></div>
+              <div class="text-slate-400">CVE Mitigado: <span class="text-rose-400 font-bold">CVE-2015-3306</span></div>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-dark-border space-y-3">
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-slate-400 font-mono text-[11px]">Ráfagas: 3 intentos</span>
+            </div>
+            <button onclick="launchSimulatedAttack('FTP mod_copy Exploit', 21, 'FTP-Trap', 3, '185.220.101.42', this)" class="w-full py-2 px-3 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-semibold text-xs transition-all flex items-center justify-center gap-2">
+              <span>▶</span> Simular Fuerza Bruta
+            </button>
+          </div>
+        </div>
+
+        <!-- Escenario 3: SSH Agent Exploit Probe -->
+        <div class="glass-panel rounded-2xl p-5 border border-dark-border hover:border-amber-500/40 transition-all flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-2xl">🔑</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/10 text-amber-400 font-bold">RULE-003</span>
+            </div>
+            <h3 class="text-sm font-bold text-white mt-3">SSH Agent RCE Probing</h3>
+            <p class="text-xs text-slate-400 mt-1">Conexiones no autorizadas buscando vulnerabilidades PKCS#11.</p>
+            
+            <div class="mt-3 p-2.5 rounded-lg bg-dark-surface/80 border border-dark-border text-[11px] font-mono space-y-1">
+              <div class="text-slate-400">Objetivo: <span class="text-amber-400">SSH Trampa (2222)</span></div>
+              <div class="text-slate-400">CVE Mitigado: <span class="text-rose-400 font-bold">CVE-2023-38408</span></div>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-dark-border space-y-3">
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-slate-400 font-mono text-[11px]">Ráfagas: 2 paquetes</span>
+            </div>
+            <button onclick="launchSimulatedAttack('SSH-Agent Exploit Probe', 2222, 'SSH-Trap', 2, '45.33.32.156', this)" class="w-full py-2 px-3 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-semibold text-xs transition-all flex items-center justify-center gap-2">
+              <span>▶</span> Simular Sondeo SSH
+            </button>
+          </div>
+        </div>
+
+        <!-- Escenario 4: Log4Shell HTTP Header Probe -->
+        <div class="glass-panel rounded-2xl p-5 border border-dark-border hover:border-blue-500/40 transition-all flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-2xl">🌐</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-blue-500/10 text-blue-400 font-bold">RULE-004</span>
+            </div>
+            <h3 class="text-sm font-bold text-white mt-3">Log4Shell JNDI Scanning</h3>
+            <p class="text-xs text-slate-400 mt-1">Inyecciones en cabeceras User-Agent buscando servidores vulnerables.</p>
+            
+            <div class="mt-3 p-2.5 rounded-lg bg-dark-surface/80 border border-dark-border text-[11px] font-mono space-y-1">
+              <div class="text-slate-400">Objetivo: <span class="text-blue-400">HTTP Trampa (8080)</span></div>
+              <div class="text-slate-400">CVE Mitigado: <span class="text-rose-400 font-bold">CVE-2021-44228</span></div>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-dark-border space-y-3">
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-slate-400 font-mono text-[11px]">Ráfagas: 4 solicitudes</span>
+            </div>
+            <button onclick="launchSimulatedAttack('Log4Shell JNDI Injection Scan', 8080, 'HTTP-Trap', 4, '198.51.100.88', this)" class="w-full py-2 px-3 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 font-semibold text-xs transition-all flex items-center justify-center gap-2">
+              <span>▶</span> Simular Ataque Log4j
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Configuración personalizada de ataque -->
+      <div class="glass-panel rounded-2xl p-5 space-y-4">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <span>⚙️</span> Inyector Personalizado de Paquetes
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-xs text-slate-400 font-mono mb-1">IP ATACANTE SIMULADA</label>
+            <input type="text" id="custom-ip" value="192.168.1.150" class="w-full px-3 py-2 rounded-lg bg-dark-surface border border-dark-border text-xs text-white font-mono focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 font-mono mb-1">PUERTO SEÑUELO</label>
+            <select id="custom-port" class="w-full px-3 py-2 rounded-lg bg-dark-surface border border-dark-border text-xs text-white font-mono focus:outline-none focus:border-emerald-500">
+              <option value="21">21 (FTP-Trap)</option>
+              <option value="2222">2222 (SSH-Trap)</option>
+              <option value="8080">8080 (HTTP-Trap)</option>
+              <option value="3389" selected>3389 (RDP-Trap BlueKeep)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 font-mono mb-1">CANTIDAD DE PAQUETES</label>
+            <input type="number" id="custom-repeat" min="1" max="15" value="5" class="w-full px-3 py-2 rounded-lg bg-dark-surface border border-dark-border text-xs text-white font-mono focus:outline-none focus:border-emerald-500">
+          </div>
+          <div class="flex items-end">
+            <button onclick="launchCustomAttack()" class="w-full py-2 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs transition-all shadow-md shadow-emerald-500/20">
+              Inyectar Tráfico Malicioso
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+
+    <!-- ═════════════════════════════════════════════════════════════════════
+         PESTAÑA 3: FIREWALL Y CUARENTENA (AUTOBAN)
+         ═════════════════════════════════════════════════════════════════════ -->
+    <div id="tab-firewall" class="tab-content hidden space-y-6">
+
+      <div class="glass-panel rounded-2xl p-6 border-l-4 border-l-amber-500">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <span>🔒</span> Centro de Contención de Red · Windows Defender Firewall
+            </h2>
+            <p class="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+              Cumplimiento estricto de <strong class="text-emerald-400">ISO/IEC 27033-4 Cl. 9.2</strong>: Aplicación de reglas de aislamiento automático <em>(default-deny)</em> ante tráfico hostil con política de liberación temporal.
+            </p>
+          </div>
+          <button onclick="refreshStatus()" class="px-4 py-2 rounded-xl bg-dark-surface border border-dark-border hover:bg-slate-800 text-xs text-slate-300 font-medium transition-colors flex items-center gap-2 self-start sm:self-auto">
+            <span>🔄</span> Sincronizar Reglas
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabla de IPs en Cuarentena -->
+      <div class="glass-panel rounded-2xl p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span>📋</span> Direcciones IP Hostiles Actualmente Bloqueadas
+          </h3>
+          <span class="text-xs font-mono text-slate-400">TEMPORIZADOR: 300 SEGUNDOS</span>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-dark-border">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-dark-surface/90 border-b border-dark-border text-slate-400 font-mono text-[11px] uppercase">
+                <th class="py-3 px-4">Dirección IP</th>
+                <th class="py-3 px-4">Regla Disparadora</th>
+                <th class="py-3 px-4">Hora de Bloqueo</th>
+                <th class="py-3 px-4">Tiempo Restante</th>
+                <th class="py-3 px-4">Mecanismo de Contención</th>
+                <th class="py-3 px-4 text-right">Acción Manual</th>
+              </tr>
+            </thead>
+            <tbody id="firewall-tbody" class="divide-y divide-dark-border font-sans">
+              <tr>
+                <td colspan="6" class="text-center py-8 text-slate-500 font-mono text-xs">
+                  Sin IPs en cuarentena actualmente.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+
+    <!-- ═════════════════════════════════════════════════════════════════════
+         PESTAÑA 4: MATRIZ NIST CVEs & NORMAS
+         ═════════════════════════════════════════════════════════════════════ -->
+    <div id="tab-cves" class="tab-content hidden space-y-6">
+
+      <!-- Encabezado para responder al docente -->
+      <div class="glass-panel rounded-2xl p-6 border-l-4 border-l-emerald-500">
+        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+          <span>🎓</span> Sustentación Técnica: ¿Qué Vulnerabilidades NIST (CVE) Mitiga NetTrap-IPS?
+        </h2>
+        <div class="mt-3 p-4 rounded-xl bg-dark-surface/70 border border-emerald-500/20 text-xs text-slate-300 leading-relaxed space-y-2">
+          <p>
+            <strong>Respuesta clave para el docente:</strong> <em>"NetTrap-IPS no espera a que el atacante vulnere el sistema; neutraliza activamente la fase de reconocimiento previo (escaneo de puertos y sondeos automáticos) requerida para explotar las siguientes 5 vulnerabilidades críticas catalogadas en la Base de Datos Nacional de Vulnerabilidades (NVD) del NIST. Al detectar el intento en señuelos, el IPS aísla inmediatamente la IP agresora en el Firewall de Windows y emite evidencia forense .pcap."</em>
+          </p>
+        </div>
+      </div>
+
+      <!-- Tarjetas de los 5 CVEs -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5" id="cves-container">
+        <!-- Renderizado dinámico vía JS -->
+      </div>
+
+      <!-- Diagrama de Flujo Normativo -->
+      <div class="glass-panel rounded-2xl p-5 space-y-3">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <span>📐</span> Flujo de Mitigación y Trazabilidad Normativa
+        </h3>
+        <div class="p-4 rounded-xl bg-dark-surface border border-dark-border font-mono text-xs text-slate-300 space-y-2 leading-relaxed">
+          <div class="text-emerald-400 font-bold">FASE 1 · INGESTA Y DETECCIÓN (ISO/IEC 27033-1 Cl. 10.3)</div>
+          <div class="pl-4 text-slate-400">Atacante realiza escaneo SYN → Sockets Honeypot multihilo capturan conexión → Cierre inmediato sin interacción.</div>
+
+          <div class="text-amber-400 font-bold mt-2">FASE 2 · VALIDACIÓN Y CORRELACIÓN (OWASP ASVS V5.1.1)</div>
+          <div class="pl-4 text-slate-400">Sanitización sintáctica con ipaddress → Verificación de Whitelist anti-spoofing → Evaluación de umbrales YAML.</div>
+
+          <div class="text-rose-400 font-bold mt-2">FASE 3 · RESPUESTA ACTIVA EN FIREWALL (ISO/IEC 27033-4 Cl. 9.2)</div>
+          <div class="pl-4 text-slate-400">Ejecución segura de netsh advfirewall add rule (action=block remoteip=IP) → Temporizador de cuarentena de 300 s.</div>
+
+          <div class="text-cyan-400 font-bold mt-2">FASE 4 · PRESERVACIÓN FORENSE (NIST SP 800-218 SSDF PW.9.1)</div>
+          <div class="pl-4 text-slate-400">Generación y resguardo del volcado binario .pcap en directorio con permisos NTFS restringidos para análisis en Wireshark.</div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       TOAST CONTAINER
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       JAVASCRIPT DEL DASHBOARD (ENTERPRISE GRADE)
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <script>
+    'use strict';
+
+    // ── Estado Global ────────────────────────────────────────────────────────
+    let ws = null;
+    let wsRetryDelay = 1000;
+    let trafficChart = null;
+    let alertsCache = [];
+    let blockedCache = [];
+    const chartHistory = {
+      labels: [],
+      events: [],
+      alerts: []
+    };
+
+    // ── Escape HTML (OWASP ASVS V5.3.3) ──────────────────────────────────────
+    function esc(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // ── Navegación entre Pestañas ─────────────────────────────────────────────
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.getElementById(tabId).classList.remove('hidden');
+
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('text-emerald-400', 'bg-emerald-500/15', 'border-emerald-500/30');
+        btn.classList.add('text-slate-400');
+      });
+
+      const activeBtn = document.getElementById(`btn-${tabId}`);
+      if (activeBtn) {
+        activeBtn.classList.add('text-emerald-400', 'bg-emerald-500/15', 'border-emerald-500/30');
+        activeBtn.classList.remove('text-slate-400');
+      }
+    }
+
+    // ── Reloj Local ──────────────────────────────────────────────────────────
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock-local').textContent = now.toLocaleTimeString('es-CO');
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // ── Inicialización de Chart.js ───────────────────────────────────────────
+    function initChart() {
+      const ctx = document.getElementById('trafficChart').getContext('2d');
+      
+      const now = new Date();
+      for (let i = 9; i >= 0; i--) {
+        const t = new Date(now.getTime() - i * 3000);
+        chartHistory.labels.push(t.toLocaleTimeString('es-CO'));
+        chartHistory.events.push(0);
+        chartHistory.alerts.push(0);
+      }
+
+      trafficChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: chartHistory.labels,
+          datasets: [
+            {
+              label: 'Paquetes / Eventos',
+              data: chartHistory.events,
+              borderColor: '#06b6d4',
+              backgroundColor: 'rgba(6, 182, 212, 0.1)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.35,
+              pointRadius: 2,
+            },
+            {
+              label: 'Alertas Críticas',
+              data: chartHistory.alerts,
+              borderColor: '#f43f5e',
+              backgroundColor: 'rgba(244, 63, 94, 0.15)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.35,
+              pointRadius: 3,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 300 },
+          plugins: {
+            legend: {
+              labels: {
+                color: '#94a3b8',
+                font: { family: '"Plus Jakarta Sans"', size: 11 }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#64748b', font: { family: '"JetBrains Mono"', size: 9 } }
+            },
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#64748b', font: { family: '"JetBrains Mono"', size: 9 } }
+            }
+          }
+        }
+      });
+    }
+
+    function pushChartData(eventDelta, alertDelta) {
+      if (!trafficChart) return;
+      const nowStr = new Date().toLocaleTimeString('es-CO');
+
+      chartHistory.labels.push(nowStr);
+      chartHistory.events.push(eventDelta);
+      chartHistory.alerts.push(alertDelta);
+
+      if (chartHistory.labels.length > 15) {
+        chartHistory.labels.shift();
+        chartHistory.events.shift();
+        chartHistory.alerts.shift();
+      }
+
+      trafficChart.update();
+    }
+
+    // ── Log en Consola de Telemetría ─────────────────────────────────────────
+    function logToConsole(prefix, message, type = 'info') {
+      const consoleEl = document.getElementById('live-console');
+      if (!consoleEl) return;
+
+      const time = new Date().toLocaleTimeString('es-CO');
+      const div = document.createElement('div');
+      
+      let colorClass = 'text-emerald-400';
+      if (type === 'warn') colorClass = 'text-amber-400';
+      if (type === 'error') colorClass = 'text-rose-400 font-bold';
+      if (type === 'sys') colorClass = 'text-cyan-400';
+
+      div.className = `${colorClass} text-[11px] leading-tight`;
+      div.innerHTML = `<span class="text-slate-500">[${time}]</span> <span class="font-bold">[${esc(prefix)}]</span> ${esc(message)}`;
+      
+      consoleEl.appendChild(div);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+
+      while (consoleEl.children.length > 80) {
+        consoleEl.removeChild(consoleEl.firstChild);
+      }
+    }
+
+    // ── Toast Notifications ──────────────────────────────────────────────────
+    function showToast(title, body, severity = 'CRITICAL') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+
+      const isCritical = severity === 'CRITICAL';
+      const borderCol = isCritical ? 'border-rose-500' : 'border-amber-500';
+      const bgCol = isCritical ? 'bg-rose-950/90' : 'bg-amber-950/90';
+
+      toast.className = `p-4 rounded-xl border ${borderCol} ${bgCol} text-white shadow-2xl backdrop-blur pointer-events-auto transition-all transform duration-300 translate-y-2 opacity-0`;
+      toast.innerHTML = `
+        <div class="flex items-start gap-3">
+          <span class="text-xl">${isCritical ? '🚨' : '⚠️'}</span>
+          <div class="flex-1">
+            <div class="text-xs font-bold font-mono tracking-wide">${esc(title)}</div>
+            <div class="text-xs text-slate-200 mt-0.5 leading-snug">${esc(body)}</div>
+          </div>
+        </div>
+      `;
+
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 50);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-x-4');
+        setTimeout(() => toast.remove(), 400);
+      }, 6000);
+    }
+
+    // ── Conexión WebSocket Resiliente ────────────────────────────────────────
+    function connectWS() {
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const url = `${proto}//${location.host}/ws/alerts`;
+      
+      const badge = document.getElementById('ws-status');
+      const badgeText = document.getElementById('ws-text');
+
+      try {
+        ws = new WebSocket(url);
+      } catch (e) {
+        scheduleWSRetry();
+        return;
+      }
+
+      ws.onopen = () => {
+        badge.className = 'flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono font-medium';
+        badgeText.textContent = 'WS CONECTADO';
+        wsRetryDelay = 1000;
+        logToConsole('WEBSOCKET', 'Canal bidireccional en tiempo real establecido con éxito.', 'sys');
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          handleLiveAlert(data);
+        } catch (e) {
+          console.error("Error al procesar mensaje WS", e);
+        }
+      };
+
+      ws.onclose = () => {
+        badge.className = 'flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-mono font-medium';
+        badgeText.textContent = 'WS RECONECTANDO...';
+        scheduleWSRetry();
+      };
+
+      ws.onerror = () => {
+        if (ws) ws.close();
+      };
+    }
+
+    function scheduleWSRetry() {
+      setTimeout(() => {
+        connectWS();
+        wsRetryDelay = Math.min(wsRetryDelay * 1.5, 15000);
+      }, wsRetryDelay);
+    }
+
+    // ── Procesamiento de Alerta Recibida en Vivo ──────────────────────────────
+    function handleLiveAlert(alert) {
+      alertsCache.unshift(alert);
+      renderAlertRow(alert, true);
+      updateKPIs();
+      pushChartData(alert.count || 3, 1);
+
+      const sev = alert.severidad || 'CRITICAL';
+      const cveStr = (alert.cve_mitigated && alert.cve_mitigated.length) ? alert.cve_mitigated.join(', ') : 'N/A';
+
+      logToConsole(
+        'ALERTA ' + sev,
+        `${alert.ip_origen} activó ${alert.rule_name || alert.rule_id} en puerto ${alert.puerto}. Mitigado: ${cveStr}`,
+        sev === 'CRITICAL' ? 'error' : 'warn'
+      );
+
+      if (alert.blocked) {
+        logToConsole('FIREWALL', `Regla AutoBan aplicada para IP ${alert.ip_origen}. Cuarentena 300s.`, 'sys');
+      }
+
+      showToast(
+        `[${sev}] Intrusión Detectada`,
+        `${alert.ip_origen} → ${alert.rule_name || alert.rule_id} | ${cveStr}`,
+        sev
+      );
+
+      refreshStatus();
+    }
+
+    // ── Renderizado de Filas de la Tabla de Alertas ──────────────────────────
+    function renderAlertRow(alert, isPrepend = false) {
+      const tbody = document.getElementById('alerts-tbody');
+      const emptyRow = document.getElementById('empty-alerts-row');
+      if (emptyRow) emptyRow.remove();
+
+      const tr = document.createElement('tr');
+      tr.className = 'hover:bg-slate-800/40 transition-colors alert-row';
+
+      const timeFormatted = alert.timestamp ? new Date(alert.timestamp).toLocaleTimeString('es-CO') : '--:--:--';
+      const isCritical = alert.severidad === 'CRITICAL';
+
+      const sevBadge = isCritical 
+        ? `<span class="px-2 py-0.5 rounded font-mono font-bold text-[10px] bg-rose-500/15 text-rose-400 border border-rose-500/30">CRITICAL</span>`
+        : `<span class="px-2 py-0.5 rounded font-mono font-bold text-[10px] bg-amber-500/15 text-amber-400 border border-amber-500/30">${esc(alert.severidad || 'HIGH')}</span>`;
+
+      const cveBadges = (alert.cve_mitigated || []).map(c => 
+        `<span class="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono text-[10px]">${esc(c)}</span>`
+      ).join(' ');
+
+      const fwStatus = alert.blocked
+        ? `<span class="flex items-center gap-1.5 text-rose-400 font-mono font-semibold text-[11px]"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>BLOQUEADO</span>`
+        : `<span class="text-slate-400 font-mono text-[11px]">Vigilancia</span>`;
+
+      let pcapBtn = '<span class="text-slate-500 font-mono text-[10px]">No disp.</span>';
+      if (alert.pcap_filename) {
+        pcapBtn = `<a href="/api/pcap/${encodeURIComponent(alert.pcap_filename)}" download class="px-2.5 py-1 rounded bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-400 font-mono text-[11px] transition-all inline-flex items-center gap-1"><span>📥</span> .pcap</a>`;
+      } else if (alert.pcap_path) {
+        const fname = alert.pcap_path.split(/[\\/]/).pop();
+        pcapBtn = `<a href="/api/pcap/${encodeURIComponent(fname)}" download class="px-2.5 py-1 rounded bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-400 font-mono text-[11px] transition-all inline-flex items-center gap-1"><span>📥</span> .pcap</a>`;
+      }
+
+      tr.innerHTML = `
+        <td class="py-3 px-4 font-mono text-slate-400 text-[11px]">${esc(timeFormatted)}</td>
+        <td class="py-3 px-4">${sevBadge}</td>
+        <td class="py-3 px-4 font-mono text-white font-bold">${esc(alert.ip_origen)}</td>
+        <td class="py-3 px-4 font-mono text-slate-300">${esc(alert.puerto)} <span class="text-slate-500">(${esc(alert.label || 'Trap')})</span></td>
+        <td class="py-3 px-4 text-slate-200">${esc(alert.rule_name || alert.rule_id)}</td>
+        <td class="py-3 px-4">${cveBadges || '<span class="text-slate-600 font-mono">-</span>'}</td>
+        <td class="py-3 px-4">${fwStatus}</td>
+        <td class="py-3 px-4 text-right">${pcapBtn}</td>
+      `;
+
+      if (isPrepend) {
+        tbody.prepend(tr);
+      } else {
+        tbody.appendChild(tr);
+      }
+    }
+
+    // ── Actualización de KPIs y DEFCON ───────────────────────────────────────
+    function updateKPIs() {
+      const totalAlerts = alertsCache.length;
+      document.getElementById('kpi-alerts-total').textContent = totalAlerts;
+      document.getElementById('alert-counter-badge').textContent = `${totalAlerts} alertas`;
+
+      const defconEl = document.getElementById('kpi-defcon');
+      const defconBar = document.getElementById('defcon-bar');
+
+      if (totalAlerts === 0) {
+        defconEl.textContent = 'NORMAL';
+        defconEl.className = 'text-2xl font-black text-emerald-400 tracking-tight font-mono';
+        defconBar.className = 'bg-emerald-500 h-1.5 rounded-full transition-all duration-500';
+        defconBar.style.width = '20%';
+      } else if (totalAlerts < 4) {
+        defconEl.textContent = 'ELEVADO';
+        defconEl.className = 'text-2xl font-black text-amber-400 tracking-tight font-mono';
+        defconBar.className = 'bg-amber-500 h-1.5 rounded-full transition-all duration-500';
+        defconBar.style.width = '65%';
+      } else {
+        defconEl.textContent = 'CRÍTICO';
+        defconEl.className = 'text-2xl font-black text-rose-500 tracking-tight font-mono animate-pulse';
+        defconBar.className = 'bg-rose-500 h-1.5 rounded-full transition-all duration-500';
+        defconBar.style.width = '100%';
+      }
+    }
+
+    // ── Carga de Estado General y Firewall (/api/status) ─────────────────────
+    async function refreshStatus() {
+      try {
+        const res = await fetch('/api/status');
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const blockedList = data.ips_bloqueadas || [];
+        blockedCache = blockedList;
+        document.getElementById('kpi-blocked-total').textContent = blockedList.length;
+        document.getElementById('tab-blocked-badge').textContent = blockedList.length;
+
+        if (data.total_eventos !== undefined) {
+          document.getElementById('kpi-events-total').textContent = data.total_eventos;
+        }
+
+        renderFirewallTable(blockedList);
+      } catch (err) {
+        console.warn("Fallo al refrescar estado", err);
+      }
+    }
+
+    function renderFirewallTable(blockedList) {
+      const tbody = document.getElementById('firewall-tbody');
+      tbody.innerHTML = '';
+
+      if (!blockedList || blockedList.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="text-center py-8 text-slate-500 font-mono text-xs">
+              Sin IPs en cuarentena actualmente.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      blockedList.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-800/40 transition-colors';
+
+        const ip = typeof item === 'string' ? item : item.ip;
+        const remaining = typeof item === 'object' ? (item.remaining_seconds || 300) : 300;
+        const fwApplied = typeof item === 'object' ? item.firewall_applied : true;
+        const blockedAt = (typeof item === 'object' && item.blocked_at) ? new Date(item.blocked_at).toLocaleTimeString('es-CO') : '--:--:--';
+
+        const methodBadge = fwApplied
+          ? `<span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono text-[10px] border border-emerald-500/20">netsh Defender Regla Activa</span>`
+          : `<span class="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 font-mono text-[10px] border border-cyan-500/20">Aislamiento NetTrap IPS</span>`;
+
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-mono font-bold text-rose-400">${esc(ip)}</td>
+          <td class="py-3 px-4 font-mono text-slate-300">AutoBan Defensivo</td>
+          <td class="py-3 px-4 font-mono text-slate-400">${esc(blockedAt)}</td>
+          <td class="py-3 px-4 font-mono text-amber-400 font-semibold">${esc(remaining)} s</td>
+          <td class="py-3 px-4">${methodBadge}</td>
+          <td class="py-3 px-4 text-right">
+            <button onclick="unblockIP('${esc(ip)}')" class="px-2.5 py-1 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-[11px] font-semibold transition-all">
+              🔓 Desbloquear
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function unblockIP(ip) {
+      if (!confirm(`¿Desea levantar la regla de aislamiento y liberar la IP ${ip}?`)) return;
+      try {
+        const res = await fetch(`/api/unblock/${encodeURIComponent(ip)}`, { method: 'POST' });
+        const d = await res.json();
+        if (d.success) {
+          logToConsole('FIREWALL', `Regla liberada manualmente para IP ${ip}`, 'sys');
+          showToast('IP Liberada', `La dirección ${ip} fue retirada de la cuarentena.`, 'HIGH');
+          refreshStatus();
+        }
+      } catch (e) {
+        alert("Error al desbloquear: " + e);
+      }
+    }
+
+    // ── Carga del Historial de Alertas Inicial (/api/alerts) ──────────────────
+    async function fetchAlertsHistory() {
+      try {
+        const res = await fetch('/api/alerts?limit=50');
+        if (!res.ok) return;
+        const alerts = await res.json();
+        alertsCache = alerts;
+
+        const tbody = document.getElementById('alerts-tbody');
+        tbody.innerHTML = '';
+
+        if (alerts.length === 0) {
+          tbody.innerHTML = `
+            <tr id="empty-alerts-row">
+              <td colspan="8" class="text-center py-10 text-slate-500 font-mono text-xs">
+                📡 Sistema en guardia. Sin agresiones activas detectadas en los últimos minutos.
+              </td>
+            </tr>
+          `;
+        } else {
+          alerts.forEach(a => renderAlertRow(a, false));
+        }
+
+        updateKPIs();
+      } catch (err) {
+        console.warn("Fallo al cargar historial de alertas", err);
+      }
+    }
+
+    // ── Carga de CVEs NIST (/api/cves) ───────────────────────────────────────
+    async function fetchNistCVEs() {
+      try {
+        const res = await fetch('/api/cves');
+        if (!res.ok) return;
+        const cves = await res.json();
+
+        const container = document.getElementById('cves-container');
+        container.innerHTML = '';
+
+        cves.forEach(item => {
+          const card = document.createElement('div');
+          card.className = 'glass-panel rounded-2xl p-5 border border-dark-border hover:border-emerald-500/40 transition-all flex flex-col justify-between';
+          
+          card.innerHTML = `
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">${esc(item.cve)}</span>
+                <span class="px-2 py-0.5 rounded font-mono font-bold text-[10px] bg-rose-500/15 text-rose-400 border border-rose-500/30">CVSS ${esc(item.cvss)} · ${esc(item.severidad)}</span>
+              </div>
+              <h3 class="text-sm font-bold text-white mt-3">${esc(item.servicio)}</h3>
+              <p class="text-xs text-rose-300 font-medium mt-0.5">Vector: ${esc(item.vector)}</p>
+
+              <div class="mt-3 p-3 rounded-xl bg-dark-surface/90 border border-dark-border text-xs text-slate-300 space-y-1.5 leading-relaxed">
+                <div><strong class="text-emerald-400 font-mono">Mitigación NetTrap:</strong> ${esc(item.mitigacion)}</div>
+                <div class="text-[11px] text-slate-400 font-mono pt-1 border-t border-dark-border/60">
+                  <span class="text-slate-500">Regla Activa:</span> ${esc(item.regla_asociada)}
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-dark-border flex items-center justify-between text-[11px] font-mono text-slate-400">
+              <span class="text-emerald-400/90 font-semibold">${esc(item.norma)}</span>
+              <span class="text-slate-500">NVD Verified</span>
+            </div>
+          `;
+          container.appendChild(card);
+        });
+
+      } catch (e) {
+        console.warn("Fallo al cargar matriz de CVEs", e);
+      }
+    }
+
+    // ── Ejecución de Ataques Simulados ───────────────────────────────────────
+    async function launchSimulatedAttack(scenario, port, label, repeat, ip, btnEl) {
+      if (btnEl) {
+        btnEl.disabled = true;
+        btnEl.innerHTML = `<span>⏳</span> Inyectando...`;
+      }
+
+      logToConsole('SIMULADOR', `Lanzando ${repeat} ráfagas [${scenario}] desde IP ${ip} hacia puerto ${port} (${label})...`, 'warn');
+
+      try {
+        const res = await fetch('/api/simulate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            scenario,
+            port,
+            label,
+            repeat,
+            ip_origen: ip
+          })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          logToConsole('SIMULADOR', `Inyección completada. Los paquetes fueron procesados por el motor de correlación.`, 'sys');
+        }
+      } catch (err) {
+        logToConsole('SIMULADOR', `Error al comunicar con la API: ${err}`, 'error');
+      }
+
+      setTimeout(() => {
+        if (btnEl) {
+          btnEl.disabled = false;
+          btnEl.innerHTML = `<span>▶</span> Re-ejecutar`;
+        }
+      }, 1500);
+    }
+
+    function launchCustomAttack() {
+      const ip = document.getElementById('custom-ip').value.trim() || '192.168.1.150';
+      const port = parseInt(document.getElementById('custom-port').value);
+      const repeat = parseInt(document.getElementById('custom-repeat').value) || 5;
+
+      const portLabels = { 21: 'FTP-Trap', 2222: 'SSH-Trap', 8080: 'HTTP-Trap', 3389: 'RDP-Trap' };
+      launchSimulatedAttack('Ataque Personalizado', port, portLabels[port] || `PORT-${port}`, repeat, ip);
+    }
+
+    async function triggerMassiveAttack(btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span>⏳</span> Disparando APT Masivo...`;
+
+      logToConsole('RED TEAM', 'INICIANDO ATAQUE MASIVO APT COORDINADO CONTRA TODOS LOS PUERTOS SEÑUELO', 'error');
+
+      const attacks = [
+        { scenario: 'Nmap SYN Scan Port 3389', port: 3389, label: 'RDP-Trap', repeat: 5, ip: '198.51.100.22' },
+        { scenario: 'FTP mod_copy Probing 21', port: 21, label: 'FTP-Trap', repeat: 4, ip: '185.220.101.42' },
+        { scenario: 'SSH-Agent Exploit 2222', port: 2222, label: 'SSH-Trap', repeat: 3, ip: '45.33.32.156' },
+        { scenario: 'Log4Shell Recon 8080', port: 8080, label: 'HTTP-Trap', repeat: 5, ip: '203.0.113.99' },
+      ];
+
+      for (const atk of attacks) {
+        await launchSimulatedAttack(atk.scenario, atk.port, atk.label, atk.repeat, atk.ip);
+        await new Promise(r => setTimeout(r, 200));
+      }
+
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.innerHTML = `<span>💥</span> DISPARAR ATAQUE MASIVO APT`;
+      }, 2500);
+    }
+
+    // ── Filtro de la Tabla de Alertas ────────────────────────────────────────
+    function filterAlertsTable() {
+      const q = document.getElementById('filter-ip').value.toLowerCase();
+      document.querySelectorAll('.alert-row').forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(q) ? '' : 'none';
+      });
+    }
+
+    function clearAlertsView() {
+      alertsCache = [];
+      document.getElementById('alerts-tbody').innerHTML = `
+        <tr id="empty-alerts-row">
+          <td colspan="8" class="text-center py-10 text-slate-500 font-mono text-xs">
+            Vista limpiada por el operador. Nuevas alertas aparecerán en tiempo real.
+          </td>
+        </tr>
+      `;
+      updateKPIs();
+    }
+
+    // ── Inicialización General ───────────────────────────────────────────────
+    window.addEventListener('DOMContentLoaded', () => {
+      initChart();
+      connectWS();
+      fetchAlertsHistory();
+      refreshStatus();
+      fetchNistCVEs();
+
+      setInterval(refreshStatus, 8000);
+    });
+  </script>
+
+</body>
+</html>

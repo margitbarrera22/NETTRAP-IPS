@@ -1,0 +1,59 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Environment variables & secrets (NIST SSDF PS.1)
+.env
+.env.*
+*.env
+
+# Logs and runtime databases
+*.log
+src/data/logs/*.log
+src/data/logs/*.jsonl
+!src/data/logs/.gitkeep
+
+# Forensic PCAP dumps (evidence files)
+*.pcap
+src/data/pcap/*.pcap
+!src/data/pcap/.gitkeep
+
+# IDEs and OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

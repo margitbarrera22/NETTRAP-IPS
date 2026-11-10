@@ -1,0 +1,33 @@
+# NetTrap-IPS · Dependencias Python
+# Equipo CyberDefender — Clase 2/5
+#
+# Instalar con:
+#   pip install -r requirements.txt
+#
+# Normas:
+#   NIST SP 800-218 (SSDF) PW.4.1 — gestión de dependencias documentada
+#   OWASP ASVS V14.2 — uso de librerías con historial de seguridad conocido
+
+# ── Web framework ─────────────────────────────────────────────────────────────
+fastapi==0.115.5
+uvicorn[standard]==0.32.0
+jinja2==3.1.4
+python-multipart==0.0.12   # para form data en FastAPI
+
+# ── WebSockets ────────────────────────────────────────────────────────────────
+websockets==13.1
+
+# ── Seguridad: hashing Argon2id (OWASP ASVS V2.4.3) ─────────────────────────
+argon2-cffi==23.1.0
+
+# ── Parsing y validación ──────────────────────────────────────────────────────
+pyyaml==6.0.2        # lectura de reglas YAML
+jsonschema==4.23.0   # validación de esquema de reglas
+
+# ── Utilidades ────────────────────────────────────────────────────────────────
+# ipaddress → incluido en la stdlib de Python 3.3+
+# socket    → stdlib
+# threading → stdlib
+# subprocess→ stdlib
+# pathlib   → stdlib
+

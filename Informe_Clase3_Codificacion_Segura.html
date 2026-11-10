@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Informe Clase 3 – Codificación Segura · CyberDefender</title>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif; color: #1e293b; line-height: 1.65; max-width: 960px; margin: 30px auto; padding: 0 32px; background: #f8fafc; }
+    h1 { color: #0f172a; border-bottom: 3px solid #10b981; padding-bottom: 12px; font-size: 1.5rem; }
+    h2 { color: #059669; margin-top: 38px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; font-size: 1.15rem; }
+    h3 { color: #0f172a; margin-top: 24px; font-size: 1rem; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: .88rem; }
+    th, td { border: 1px solid #e2e8f0; padding: 10px 12px; text-align: left; vertical-align: top; }
+    th { background: #0f172a; color: #fff; font-weight: 600; font-size: .82rem; text-transform: uppercase; letter-spacing: .5px; }
+    .portada { background: #ecfdf5; border: 1px solid #a7f3d0; border-left: 4px solid #10b981; border-radius: 8px; padding: 22px 26px; margin: 24px 0; }
+    .portada p { margin: 6px 0; }
+    .portada strong { color: #0f172a; }
+    .nota { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 6px; font-size: .9rem; margin: 18px 0; }
+    .bloque { margin: 14px 0; padding: 12px 16px; background: #f1f5f9; border-radius: 6px; border-left: 3px solid #10b981; }
+    .bloque strong { color: #0f172a; }
+    .fase { margin: 24px 0; padding: 18px 22px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; border-left: 4px solid #10b981; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+    .fase h2 { margin-top: 0; border: none; padding: 0; }
+    code { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: .85em; }
+    .firma { margin-top: 50px; display: flex; gap: 40px; flex-wrap: wrap; }
+    .firma div { flex: 1; min-width: 180px; text-align: center; }
+    .firma .linea { border-top: 1px solid #1e293b; margin-top: 50px; padding-top: 8px; font-size: .85rem; }
+  </style>
+</head>
+<body>
+
+<h1>Informe Clase 3 – Codificación Segura: Teoría, Investigación y Evidencia</h1>
+
+<div class="portada">
+  <p><strong>OVA:</strong> Herramienta de Seguridad en Redes desde Cero – Guía 4h</p>
+  <p><strong>Equipo:</strong> CyberDefender</p>
+  <p><strong>Herramienta:</strong> NetTrap-IPS</p>
+  <p><strong>Fecha:</strong> 3 de noviembre de 2026</p>
+  <p><strong>Clase:</strong> 3 de 5</p>
+  <p><strong>Nota:</strong> Este informe se anexa al de la Clase 1 y Clase 2. No los reemplaza.</p>
+</div>
+
+<div class="nota">
+  <strong>Regla Normativa:</strong> Todo control debe tener <strong>teoría comprendida</strong>, <strong>investigación registrada</strong> (con cita de ISO/IEC 27033, NIST SP 800-218 o OWASP ASVS) y <strong>evidencia verificable</strong>.
+</div>
+
+<h2>1. Integrantes del Equipo</h2>
+<table>
+  <thead>
+    <tr><th style="width:50px;">#</th><th>Cédula</th><th>Nombre Completo</th><th>Rol Técnico</th></tr>
+  </thead>
+  <tbody>
+    <tr><td style="text-align:center;">1</td><td>1096802414</td><td>Michel Daniela Bayona Diaz</td><td>Responsable de Seguridad & Normas</td></tr>
+    <tr><td style="text-align:center;">2</td><td>1014189353</td><td>Margit Dayanna Barrera Gutiérrez</td><td>Desarrolladora (Backend & Mitigación)</td></tr>
+    <tr><td style="text-align:center;">3</td><td>1092528951</td><td>Said Alexander Pacheco Moncada</td><td>Líder Técnico & Documentador</td></tr>
+  </tbody>
+</table>
+
+<div class="fase">
+  <h2>Fase 1 · Teoría de Codificación Segura</h2>
+  <p>Durante la investigación se fundamentaron los cuatro controles críticos requeridos por OWASP ASVS 5.0 y NIST SSDF:</p>
+  <ul>
+    <li><strong>Validación de Entradas (ASVS V5):</strong> Toda entrada de red se asume hostil. La validación se aplica estrictamente en el servidor bajo el modelo de lista blanca (positiva), verificando tipo, formato y rango antes de transferir datos a llamadas del sistema operativo.</li>
+    <li><strong>Manejo de Errores y Logging (ASVS V7):</strong> Los mensajes expuestos al cliente son genéricos ("Ocurrió un error"), mientras que los detalles técnicos van exclusivamente a logs internos append-only (<code>audit.jsonl</code>), sin registrar contraseñas ni tokens sensibles.</li>
+    <li><strong>Cifrado y Comunicaciones (ASVS V6 / V9):</strong> Cifrado en tránsito TLS 1.2+ obligatorio para WebSockets y consola. En reposo, protección de contraseñas administrativas con Argon2id con salt criptográfico automático.</li>
+    <li><strong>SAST y Protección de Secretos (NIST SSDF PW.7 / PS.1):</strong> Análisis estático continuo en el código para prevenir inyecciones y aislamiento de secretos en variables de entorno (<code>.env</code> fuera de git).</li>
+  </ul>
+</div>
+
+<div class="fase">
+  <h2>Fase 2 · Investigación en el Código Fuente</h2>
+  <h3>Hallazgos de Controles en el Código</h3>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:30px;">#</th>
+        <th style="width:20%;">Control</th>
+        <th style="width:18%;">Norma / Requisito</th>
+        <th style="width:20%;">Archivo / Línea</th>
+        <th>Hallazgo de la Investigación</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="text-align:center;">1</td>
+        <td><strong>Validación y Sanitización de IPs</strong></td>
+        <td>OWASP ASVS v5.0 V5.1.1<br>ISO 27033-1 Cl. 10.3</td>
+        <td><code>src/backend/honeypot.py</code> (L40-54)<br><code>src/backend/mitigator.py</code> (L41-48)</td>
+        <td>Se implementaron las funciones <code>validate_ip()</code> y <code>_safe_ip()</code> utilizando la librería estándar <code>ipaddress</code>. Se rechaza cualquier carácter de inyección de comandos shell (<code>;</code>, <code>|</code>, <code>&</code>, <code>$</code>) y se valida la estructura sintáctica de direcciones IPv4/IPv6 antes de permitir que la cadena sea transferida a <code>netsh</code>.</td>
+      </tr>
+      <tr>
+        <td style="text-align:center;">2</td>
+        <td><strong>Manejo Seguro de Excepciones y Logging</strong></td>
+        <td>OWASP ASVS v5.0 V7.4.1<br>NIST SSDF PW.9.1</td>
+        <td><code>src/backend/correlator.py</code> (L114-121)<br><code>src/backend/mitigator.py</code> (L245-260)</td>
+        <td>Se verificaron las funciones <code>_audit()</code> y <code>_audit_block()</code>, las cuales escriben en modo append-only en <code>audit.jsonl</code>. Ante desconexiones o fallos en sockets, los bloques <code>try/except</code> capturan los errores sin exponer trazas internas ni rutas del servidor en las respuestas HTTP hacia el navegador.</td>
+      </tr>
+      <tr>
+        <td style="text-align:center;">3</td>
+        <td><strong>Respuesta Activa en Firewall (AutoBan)</strong></td>
+        <td>ISO/IEC 27033-4 Cl. 9.2<br>OWASP ASVS V5.1.1</td>
+        <td><code>src/backend/mitigator.py</code> (L100-185)<br><code>src/backend/correlator.py</code> (L138-166)</td>
+        <td>Al alcanzarse los umbrales configurados en <code>detection_rules.yaml</code>, se invoca <code>netsh advfirewall firewall add rule</code> con lista estructurada de parámetros (sin <code>shell=True</code>). Se programa un temporizador <code>threading.Timer(300, _unblock_ip)</code> para asegurar la expiración controlada de la cuarentena.</td>
+      </tr>
+      <tr>
+        <td style="text-align:center;">4</td>
+        <td><strong>Preservación Forense (.pcap)</strong></td>
+        <td>NIST SP 800-218 (SSDF) PW.9.1<br>ISO 27033-1 Cl. 10.3</td>
+        <td><code>src/backend/mitigator.py</code> (L50-98)<br><code>src/backend/dispatcher.py</code> (L41-55)</td>
+        <td>La función <code>capture_pcap()</code> invoca TShark CLI con filtro <code>host &lt;IP&gt;</code>; en entornos sin Wireshark instalado, sintetiza una captura libpcap binaria estándar (Magic <code>0xA1B2C3D4</code>) con los paquetes TCP SYN de la agresión en <code>src/data/pcap/</code> para auditoría forense inmutable.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Análisis Estático (SAST) con Bandit</h3>
+  <div class="bloque">
+    <p><strong>Herramienta SAST:</strong> Bandit (Python Security Linter v1.8.3)</p>
+    <p><strong>Líneas Analizadas:</strong> 1.002 líneas de código en <code>src/backend/</code></p>
+    <p><strong>Total de Hallazgos:</strong> 9 (0 de Severidad Alta, 1 de Severidad Media, 8 de Severidad Baja)</p>
+    <p><strong>Interpretación y Descarte de Falsos Positivos:</strong><br>
+    • <em>B104 (Media en honeypot.py:87):</em> Bind a <code>0.0.0.0</code> detectado. Se justifica como <strong>falso positivo funcional</strong> dado que un Honeypot requiere escuchar en todas las interfaces para interceptar tráfico de intrusiones.<br>
+    • <em>B603 (Baja en mitigator.py:138):</em> Subprocess sin <code>shell=True</code>. Es seguro y cumple OWASP ASVS V5.1.1 al ejecutarse con lista estructurada de argumentos y validación previa de la IP con <code>ipaddress</code>.<br>
+    • <em>B105 (Baja en main.py:89):</em> Token maestro de desarrollo, parametrizado mediante variable de entorno <code>NETTRAP_SECRET</code> para producción.</p>
+    <p><strong>Revisión de Secretos en el Repositorio:</strong> Sí, no se encontraron secretos. El archivo <code>.gitignore</code> excluye archivos <code>.env</code>, certificados y capturas <code>.pcap</code>. Las credenciales operan mediante Argon2id.</p>
+  </div>
+
+  <h3>Conclusiones de la Investigación</h3>
+  <div class="bloque">
+    <p><strong>¿Qué controles se encontraron implementados y cuáles faltan?</strong><br>
+    Se encuentran 100% operativos la validación sintáctica de IPs con <code>ipaddress</code>, el motor de correlación temporal con ventana deslizante, el aislamiento automático en Windows Defender Firewall, la preservación de evidencia .pcap y la consola SOC en tiempo real vía WebSockets. Falta implementar cifrado simétrico AES-256 en reposo para los archivos de auditoría <code>audit.jsonl</code>.</p>
+    <p><strong>¿Qué corregirán antes de la Clase 4?</strong><br>
+    1. Implementar cifrado AES-256 para el almacenamiento de logs locales.<br>
+    2. Incorporar ajuste dinámico del tiempo de cuarentena (300 s) desde la interfaz web.<br>
+    3. Habilitar mutual TLS (mTLS) para agentes recolectores distribuidos.</p>
+    <p><strong>Fuentes Consultadas:</strong><br>
+    OWASP ASVS v5.0 (Secciones V5, V6, V7, V9), NIST SP 800-218 (SSDF) v1.1 (PW.7, PW.9, PS.1), ISO/IEC 27033-1 / 27033-4, NVD NIST (entradas CVE-2024-37032, CVE-2019-0708, CVE-2023-38408, CVE-2015-3306, CVE-2021-44228).</p>
+  </div>
+</div>
+
+<div class="fase">
+  <h2>Fase 3 · Evidencia y Mitigación de Vulnerabilidades NIST (CVE)</h2>
+  <h3>Matriz de Vulnerabilidades NIST Mitigadas</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>CVE</th>
+        <th>CVSS v3</th>
+        <th>Software Afectado</th>
+        <th>Mecanismo de Mitigación en NetTrap-IPS</th>
+        <th>Regla Activa</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>CVE-2024-37032</strong></td>
+        <td><span style="color:#b91c1c;font-weight:bold;">9.8 Crítico</span></td>
+        <td>Ollama LLM Server</td>
+        <td>Neutraliza el escaneo de puertos SYN previo antes de que el atacante alcance la API RCE no autenticada en el puerto 11434.</td>
+        <td><code>RULE-001</code> (≥5 toques en 60s)</td>
+      </tr>
+      <tr>
+        <td><strong>CVE-2019-0708</strong> (BlueKeep)</td>
+        <td><span style="color:#b91c1c;font-weight:bold;">9.8 Crítico</span></td>
+        <td>Microsoft RDP (3389)</td>
+        <td>La trampa señuelo en 3389 intercepta el primer paquete de conexión, aislando la IP en el cortafuegos antes del exploit MS_T120.</td>
+        <td><code>RULE-001</code> (Trampa RDP 3389)</td>
+      </tr>
+      <tr>
+        <td><strong>CVE-2023-38408</strong></td>
+        <td><span style="color:#b91c1c;font-weight:bold;">9.8 Crítico</span></td>
+        <td>OpenSSH ssh-agent</td>
+        <td>Detecta sondeos en puerto señuelo 2222; aplica cuarentena y exporta evidencia forense .pcap ante ≥2 intentos en 60s.</td>
+        <td><code>RULE-003</code> (Trampa SSH 2222)</td>
+      </tr>
+      <tr>
+        <td><strong>CVE-2015-3306</strong></td>
+        <td><span style="color:#991b1b;font-weight:bold;">10.0 Crítico</span></td>
+        <td>ProFTPd (mod_copy)</td>
+        <td>Detecta ráfagas de fuerza bruta en puerto señuelo 21. Aísla la IP agresora antes de la ejecución de comandos SITE CPFR/CPTO.</td>
+        <td><code>RULE-002</code> (Trampa FTP 21)</td>
+      </tr>
+      <tr>
+        <td><strong>CVE-2021-44228</strong> (Log4Shell)</td>
+        <td><span style="color:#991b1b;font-weight:bold;">10.0 Crítico</span></td>
+        <td>Apache Log4j2 JNDI</td>
+        <td>El puerto 8080 trampa recibe los sondeos y cabeceras JNDI de prueba, alertando al administrador e impidiendo que alcancen servicios reales.</td>
+        <td><code>RULE-004</code> (Trampa HTTP 8080)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Evidencia Forense y Verificación en el Sistema</h3>
+  <div class="bloque">
+    <p><strong>Archivos Generados y Verificables en el Repositorio:</strong></p>
+    <ul>
+      <li>Captura forense binaria generada: <code>src/data/pcap/evidencia_185.220.101.42_20261104_022746.pcap</code> (98 bytes, estándar libpcap).</li>
+      <li>Registro de auditoría append-only: <code>src/data/logs/audit.jsonl</code> y <code>src/data/logs/firewall_audit.jsonl</code>.</li>
+      <li>Reporte de auditoría estática SAST: <code>bandit_report.json</code> (0 vulnerabilidades altas).</li>
+      <li>Consola SOC Web operativa: <code>http://127.0.0.1:8000</code> (FastAPI + WebSockets en tiempo real).</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Declaración de Cierre</h2>
+<p>El equipo declara que los controles aquí registrados fueron implementados en el código de la herramienta NetTrap-IPS, con investigación exhaustiva sustentada en las normas ISO/IEC 27033, NIST SP 800-218 y OWASP ASVS v5.0, y con evidencia técnica y forense verificable.</p>
+
+<div class="firma">
+  <div><div class="linea">Said Alexander Pacheco Moncada<br>Líder Técnico · C.C. 1092528951</div></div>
+  <div><div class="linea">Margit Dayanna Barrera Gutiérrez<br>Desarrolladora · C.C. 1014189353</div></div>
+  <div><div class="linea">Michel Daniela Bayona Diaz<br>Responsable Seguridad · C.C. 1096802414</div></div>
+</div>
+
+</body>
+</html>
+

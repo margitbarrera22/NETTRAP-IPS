@@ -1,0 +1,66 @@
+---
+# NetTrap-IPS · Reglas de Correlación (YAML)
+# Formato: nombre, umbral, ventana_seg, severidad, accion
+# Referencia normativa: OWASP ASVS V5.1.1 / NIST SP 800-218 PW.9.1
+
+rules:
+  - id: RULE-001
+    name: "Port Scan rapido (Nmap SYN)"
+    description: "Detecta reconocimiento: ≥5 toques en puertos trampa distintos en 60 s"
+    threshold: 5
+    window_seconds: 60
+    severity: "CRITICAL"
+    action: "block_and_capture"
+    cve_mitigated:
+      - "CVE-2024-37032"   # Enumeración de servicios / reconocimiento previo
+      - "CVE-2019-0708"    # BlueKeep – explotable tras reconocimiento de puerto 3389
+
+  - id: RULE-002
+    name: "Brute-force repetido sobre trampa FTP (puerto 21)"
+    description: "≥3 conexiones al puerto 21 señuelo en 30 s = intento de fuerza bruta"
+    threshold: 3
+    window_seconds: 30
+    severity: "HIGH"
+    action: "block_and_capture"
+    cve_mitigated:
+      - "CVE-2015-3306"    # ProFTPd – ejecución remota de código tras brute-force
+
+  - id: RULE-003
+    name: "Acceso SSH no autorizado (puerto trampa 2222)"
+    description: "≥2 intentos de conexión al puerto SSH señuelo en 60 s"
+    threshold: 2
+    window_seconds: 60
+    severity: "HIGH"
+    action: "block_and_capture"
+    cve_mitigated:
+      - "CVE-2023-38408"   # OpenSSH ssh-agent RCE
+
+  - id: RULE-004
+    name: "Sondeo HTTP no autorizado (puerto trampa 8080)"
+    description: "≥4 conexiones al puerto 8080 señuelo en 60 s"
+    threshold: 4
+    window_seconds: 60
+    severity: "MEDIUM"
+    action: "alert_only"
+    cve_mitigated:
+      - "CVE-2021-44228"   # Log4Shell – explotable via HTTP headers no saneados
+
+whitelist:
+  # IPs que NUNCA se bloquean (Gateway, DNS, localhost)
+  # Mitiga: Spoofing → ISO 27033-4 Cl. 9.2
+  - "127.0.0.1"
+  - "::1"
+  - "192.168.1.1"
+  - "8.8.8.8"
+  - "8.8.4.4"
+
+honeypot_ports:
+  - port: 21
+    label: "FTP-Trap"
+  - port: 2222
+    label: "SSH-Trap"
+  - port: 8080
+    label: "HTTP-Trap"
+  - port: 3389
+    label: "RDP-Trap"
+

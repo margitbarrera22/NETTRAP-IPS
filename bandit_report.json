@@ -1,0 +1,282 @@
+{
+  "errors": [],
+  "generated_at": "2026-11-04T02:38:38Z",
+  "metrics": {
+    "_totals": {
+      "CONFIDENCE.HIGH": 7,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 2,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 8,
+      "SEVERITY.MEDIUM": 1,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 1002,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "c:\\Users\\MARGIT\\Documents\\unipazzz\\NETTRAP\\src\\backend\\config.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 30,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "c:\\Users\\MARGIT\\Documents\\unipazzz\\NETTRAP\\src\\backend\\correlator.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 153,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "c:\\Users\\MARGIT\\Documents\\unipazzz\\NETTRAP\\src\\backend\\dispatcher.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 52,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "c:\\Users\\MARGIT\\Documents\\unipazzz\\NETTRAP\\src\\backend\\honeypot.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 1,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 1,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 133,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "c:\\Users\\MARGIT\\Documents\\unipazzz\\NETTRAP\\src\\backend\\main.py": {
+      "CONFIDENCE.HIGH": 2,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 1,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 3,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 401,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "c:\\Users\\MARGIT\\Documents\\unipazzz\\NETTRAP\\src\\backend\\mitigator.py": {
+      "CONFIDENCE.HIGH": 5,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 5,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 233,
+      "nosec": 0,
+      "skipped_tests": 0
+    }
+  },
+  "results": [
+    {
+      "code": "86             srv.settimeout(0.5)          # no bloquear para poder revisar _stop_event\n87             srv.bind((\"0.0.0.0\", self.port))\n88             srv.listen(5)\n",
+      "col_offset": 22,
+      "end_col_offset": 31,
+      "filename": "c:\\Users\\MARGIT\\Documents\\unipazzz\\NETTRAP\\src\\backend\\honeypot.py",
+      "issue_confidence": "MEDIUM",
+      "issue_cwe": {
+        "id": 605,
+        "link": "https://cwe.mitre.org/data/definitions/605.html"
+      },
+      "issue_severity": "MEDIUM",
+      "issue_text": "Possible binding to all interfaces.",
+      "line_number": 87,
+      "line_range": [
+        87
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b104_hardcoded_bind_all_interfaces.html",
+      "test_id": "B104",
+      "test_name": "hardcoded_bind_all_interfaces"
+    },
+    {
+      "code": "88 # Sesi\u00f3n maestra para el operador local (evita desconexiones al reiniciar)\n89 MASTER_TOKEN = \"nettrap_master_session_token_2026\"\n90 _sessions[MASTER_TOKEN] = {\n",
+      "col_offset": 15,
+      "end_col_offset": 50,
+      "filename": "c:\\Users\\MARGIT\\Documents\\unipazzz\\NETTRAP\\src\\backend\\main.py",
+      "issue_confidence": "MEDIUM",
+      "issue_cwe": {
+        "id": 259,
+        "link": "https://cwe.mitre.org/data/definitions/259.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Possible hardcoded password: 'nettrap_master_session_token_2026'",
+      "line_number": 89,
+      "line_range": [
+        89
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html",
+      "test_id": "B105",
+      "test_name": "hardcoded_password_string"
+    },
+    {
+      "code": "407             event_queue.put_nowait(event)\n408         except Exception:\n409             pass\n410 \n",
+      "col_offset": 8,
+      "end_col_offset": 16,
+      "filename": "c:\\Users\\MARGIT\\Documents\\unipazzz\\NETTRAP\\src\\backend\\main.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Try, Except, Pass detected.",
+      "line_number": 408,
+      "line_range": [
+        408,
+        409
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html",
+      "test_id": "B110",
+      "test_name": "try_except_pass"
+    },
+    {
+      "code": "414             s.close()\n415         except Exception:\n416             pass\n417 \n",
+      "col_offset": 8,
+      "end_col_offset": 16,
+      "filename": "c:\\Users\\MARGIT\\Documents\\unipazzz\\NETTRAP\\src\\backend\\main.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Try, Except, Pass detected.",
+      "line_number": 415,
+      "line_range": [
+        415,
+        416
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html",
+      "test_id": "B110",
+      "test_name": "try_except_pass"
+    },
+    {
+      "code": "19 \n20 import subprocess\n21 import threading\n",
+      "col_offset": 0,
+      "end_col_offset": 17,
+      "filename": "c:\\Users\\MARGIT\\Documents\\unipazzz\\NETTRAP\\src\\backend\\mitigator.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 78,
+        "link": "https://cwe.mitre.org/data/definitions/78.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Consider possible security implications associated with the subprocess module.",
+      "line_number": 20,
+      "line_range": [
+        20
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_imports.html#b404-import-subprocess",
+      "test_id": "B404",
+      "test_name": "blacklist"
+    },
+    {
+      "code": "137             try:\n138                 subprocess.run(cmd, capture_output=True, timeout=duration + 5, check=False)\n139                 logger.info(\"\ud83d\udcc1 PCAP capturado con TShark: %s\", out_path)\n",
+      "col_offset": 16,
+      "end_col_offset": 91,
+      "filename": "c:\\Users\\MARGIT\\Documents\\unipazzz\\NETTRAP\\src\\backend\\mitigator.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 78,
+        "link": "https://cwe.mitre.org/data/definitions/78.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "subprocess call - check for execution of untrusted input.",
+      "line_number": 138,
+      "line_range": [
+        138
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b603_subprocess_without_shell_equals_true.html",
+      "test_id": "B603",
+      "test_name": "subprocess_without_shell_equals_true"
+    },
+    {
+      "code": "189     try:\n190         result = subprocess.run(cmd, capture_output=True, text=True, timeout=5, check=False)\n191         if result.returncode == 0:\n",
+      "col_offset": 17,
+      "end_col_offset": 92,
+      "filename": "c:\\Users\\MARGIT\\Documents\\unipazzz\\NETTRAP\\src\\backend\\mitigator.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 78,
+        "link": "https://cwe.mitre.org/data/definitions/78.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "subprocess call - check for execution of untrusted input.",
+      "line_number": 190,
+      "line_range": [
+        190
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b603_subprocess_without_shell_equals_true.html",
+      "test_id": "B603",
+      "test_name": "subprocess_without_shell_equals_true"
+    },
+    {
+      "code": "231     try:\n232         subprocess.run(cmd, capture_output=True, text=True, timeout=5, check=False)\n233     except Exception:\n",
+      "col_offset": 8,
+      "end_col_offset": 83,
+      "filename": "c:\\Users\\MARGIT\\Documents\\unipazzz\\NETTRAP\\src\\backend\\mitigator.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 78,
+        "link": "https://cwe.mitre.org/data/definitions/78.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "subprocess call - check for execution of untrusted input.",
+      "line_number": 232,
+      "line_range": [
+        232
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b603_subprocess_without_shell_equals_true.html",
+      "test_id": "B603",
+      "test_name": "subprocess_without_shell_equals_true"
+    },
+    {
+      "code": "232         subprocess.run(cmd, capture_output=True, text=True, timeout=5, check=False)\n233     except Exception:\n234         pass\n235 \n",
+      "col_offset": 4,
+      "end_col_offset": 12,
+      "filename": "c:\\Users\\MARGIT\\Documents\\unipazzz\\NETTRAP\\src\\backend\\mitigator.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Try, Except, Pass detected.",
+      "line_number": 233,
+      "line_range": [
+        233,
+        234
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html",
+      "test_id": "B110",
+      "test_name": "try_except_pass"
+    }
+  ]
+}
