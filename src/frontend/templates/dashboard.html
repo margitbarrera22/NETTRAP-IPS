@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NetTrap-SIEM · Centro de Operaciones de Seguridad (SOC)</title>
+  <title>NetTrap-SIEM · Centro de Operaciones SOC (Nmap, Wireshark & natted.cloud)</title>
 
   <!-- Tailwind CSS & Chart.js -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -59,7 +59,7 @@
 <body class="min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
 
   <!-- ═══════════════════════════════════════════════════════════════════════
-       HEADER DEL SOC (OPERATIVO PROFESIONAL)
+       HEADER DEL SOC
        ═══════════════════════════════════════════════════════════════════════ -->
   <header class="glass-panel sticky top-0 z-50 border-b border-dark-border px-6 py-3 flex items-center justify-between">
     <!-- Brand & Status -->
@@ -76,36 +76,39 @@
             <span class="text-slate-400 font-light text-sm">/ IPS</span>
           </h1>
           <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold tracking-wide">
-            SOC OPERATIVO v3.2 · ZERO TRUST
+            INTEGRACIÓN NMAP · WIRESHARK · NATTED.CLOUD
           </span>
         </div>
-        <p class="text-[11px] text-slate-400 font-medium">Instituto Universitario de la Paz (UNIPAZ) · Monitoreo Multifuente en Tiempo Real</p>
+        <p class="text-[11px] text-slate-400 font-medium">UNIPAZ · Equipo CyberDefender (Michel Bayona, Margit Barrera, Said Pacheco)</p>
       </div>
     </div>
 
     <!-- Pestañas de Navegación del SOC -->
-    <nav class="hidden md:flex items-center gap-1 bg-dark-surface/90 p-1.5 rounded-xl border border-dark-border">
-      <button onclick="switchTab('tab-soc')" id="btn-tab-soc" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 transition-all flex items-center gap-1.5">
-        <span>📊</span> Centro de Operaciones
+    <nav class="hidden lg:flex items-center gap-1 bg-dark-surface/90 p-1.5 rounded-xl border border-dark-border">
+      <button onclick="switchTab('tab-soc')" id="btn-tab-soc" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 transition-all flex items-center gap-1.5">
+        <span>📊</span> SOC Overview
       </button>
-      <button onclick="switchTab('tab-sensors')" id="btn-tab-sensors" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-1.5">
+      <button onclick="switchTab('tab-sensors')" id="btn-tab-sensors" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-1.5">
         <span>🗂️</span> Sensores Windows (RF-01)
       </button>
-      <button onclick="switchTab('tab-firewall')" id="btn-tab-firewall" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-1.5">
-        <span>🔒</span> Cuarentena Firewall (<span id="tab-blocked-badge">0</span>)
+      <button onclick="switchTab('tab-nmap')" id="btn-tab-nmap" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-1.5">
+        <span>🎯</span> Auditoría Nmap
       </button>
-      <button onclick="switchTab('tab-cves')" id="btn-tab-cves" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-1.5">
+      <button onclick="switchTab('tab-wireshark')" id="btn-tab-wireshark" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-1.5">
+        <span>🦈</span> Forense Wireshark
+      </button>
+      <button onclick="switchTab('tab-firewall')" id="btn-tab-firewall" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-1.5">
+        <span>🔒</span> Firewall & natted.cloud (<span id="tab-blocked-badge">0</span>)
+      </button>
+      <button onclick="switchTab('tab-cves')" id="btn-tab-cves" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-1.5">
         <span>📋</span> Matriz NIST CVEs
-      </button>
-      <button onclick="switchTab('tab-telemetry')" id="btn-tab-telemetry" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-1.5">
-        <span>📜</span> Telemetría Forense
       </button>
     </nav>
 
-    <!-- Estado de Red, Reloj y Controles -->
+    <!-- Estado y Controles -->
     <div class="flex items-center gap-3">
       <!-- Toggle de Sonido Radar -->
-      <button onclick="toggleAudioAlerts()" id="btn-audio" title="Activar/Desactivar alertas sonoras de intrusión" class="p-2 rounded-lg bg-dark-surface border border-dark-border text-slate-400 hover:text-emerald-400 hover:border-emerald-500/30 transition-colors text-xs flex items-center justify-center">
+      <button onclick="toggleAudioAlerts()" id="btn-audio" title="Activar/Desactivar radar sonoro" class="p-2 rounded-lg bg-dark-surface border border-dark-border text-slate-400 hover:text-emerald-400 transition-colors text-xs flex items-center justify-center">
         <span id="audio-icon">🔇</span>
       </button>
 
@@ -116,12 +119,12 @@
       </div>
 
       <!-- Reloj Local -->
-      <div class="hidden lg:block text-right font-mono text-[11px] text-slate-400 leading-tight">
+      <div class="hidden xl:block text-right font-mono text-[11px] text-slate-400 leading-tight">
         <div id="clock-local" class="text-slate-200 font-semibold">--:--:--</div>
         <div class="text-[9px] text-emerald-400/90 font-mono">DEFENSA ACTIVA</div>
       </div>
 
-      <!-- Usuario y Salida -->
+      <!-- Salida -->
       <div class="flex items-center gap-2.5 pl-2 border-l border-dark-border">
         <div class="text-right hidden sm:block">
           <div class="text-xs font-semibold text-white">{{ user }}</div>
@@ -140,11 +143,11 @@
   <main class="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6">
 
     <!-- ═════════════════════════════════════════════════════════════════════
-         PESTAÑA 1: SOC DASHBOARD (CENTRO DE OPERACIONES)
+         PESTAÑA 1: SOC DASHBOARD (OVERVIEW)
          ═════════════════════════════════════════════════════════════════════ -->
     <div id="tab-soc" class="tab-content space-y-6">
 
-      <!-- Fila 1: KPIs Principales de Estado de Red -->
+      <!-- Fila 1: KPIs Principales -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         <!-- Nivel de Amenaza DEFCON -->
@@ -175,25 +178,25 @@
           </div>
           <p class="text-[11px] text-slate-400 mt-1">Evaluación en tiempo real con reglas YAML</p>
           <div class="mt-3 flex items-center justify-between text-[10px] text-slate-400 font-mono">
-            <span>Reglas: 4 activas</span>
+            <span>Detección Nmap: ACTIVA</span>
             <span class="text-rose-400 font-semibold">ISO 27033-1</span>
           </div>
         </div>
 
-        <!-- Aislamiento Firewall -->
+        <!-- Aislamiento Firewall (natted.cloud) -->
         <div class="glass-panel rounded-2xl p-4 border-l-4 border-l-amber-500">
           <div class="flex items-center justify-between text-slate-400 text-xs uppercase tracking-wider font-semibold">
-            <span>Aislamiento Perimetral</span>
+            <span>Aislamiento Firewall</span>
             <span class="text-lg">🔒</span>
           </div>
           <div class="mt-2 flex items-baseline gap-2">
             <span id="kpi-blocked-total" class="text-2xl font-black text-amber-400 tracking-tight font-mono">0</span>
             <span class="text-xs text-slate-400 font-mono">IPs en Cuarentena</span>
           </div>
-          <p class="text-[11px] text-slate-400 mt-1">Reglas dinámicas netsh advfirewall</p>
+          <p class="text-[11px] text-slate-400 mt-1">Lógica natted.cloud Allow/Deny (netsh)</p>
           <div class="mt-3 flex items-center justify-between text-[10px] text-slate-400 font-mono">
             <span>Liberación: 300s</span>
-            <span class="text-amber-400">AutoBan Activo</span>
+            <span class="text-amber-400">Default-Deny</span>
           </div>
         </div>
 
@@ -209,8 +212,8 @@
           </div>
           <p class="text-[11px] text-slate-400 mt-1">Esquema estándar estricto RF-02</p>
           <div class="mt-3 flex items-center justify-between text-[10px] text-slate-400 font-mono">
-            <span>Buffer: 1000 ev</span>
-            <span class="text-cyan-400">OWASP ASVS V5.1</span>
+            <span>Forense Wireshark: OK</span>
+            <span class="text-cyan-400">NIST PW.9.1</span>
           </div>
         </div>
 
@@ -329,7 +332,7 @@
                 <th class="py-3 px-4">Regla Activada</th>
                 <th class="py-3 px-4">CVE Mitigado</th>
                 <th class="py-3 px-4">Acción Firewall</th>
-                <th class="py-3 px-4 text-right">Forense .PCAP</th>
+                <th class="py-3 px-4 text-right">Forense Wireshark</th>
               </tr>
             </thead>
             <tbody id="alerts-tbody" class="divide-y divide-dark-border font-sans">
@@ -343,7 +346,7 @@
         </div>
       </div>
 
-      <!-- Fila 4: Terminal de Telemetría Normalizada (RF-02) -->
+      <!-- Fila 4: Terminal de Telemetría Normalizada -->
       <div class="glass-panel rounded-2xl p-5 space-y-2">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
@@ -358,7 +361,7 @@
         </div>
         <div id="live-console" class="h-32 rounded-xl bg-[#040711] border border-dark-border p-3 font-mono text-[11px] text-emerald-400 overflow-y-auto space-y-1 custom-scrollbar">
           <div class="text-slate-500">[INIT] NetTrap-SIEM Engine en línea bajo arquitectura Zero Trust (NIST SP 800-207).</div>
-          <div class="text-slate-500">[COLLECTORS] 3 sensores nativos de Windows enlazados (EventLog, Firewall, Tráfico).</div>
+          <div class="text-slate-500">[INTEGRATION] Módulos de Nmap Scanner, Wireshark PCAP Exporter y Políticas natted.cloud enlazados.</div>
           <div class="text-slate-500">[CORRELATOR] Motor de correlación activo con reglas YAML y ventanas deslizantes.</div>
         </div>
       </div>
@@ -378,7 +381,7 @@
               <span>🗂️</span> Diagnóstico y Estado de las 3 Fuentes Nativas de Windows (RF-01)
             </h2>
             <p class="text-xs text-slate-300 mt-1 max-w-3xl leading-relaxed">
-              Cumplimiento del requerimiento funcional <strong class="text-emerald-400">RF-01</strong>: Ingesta directa de registros de seguridad del sistema operativo, cortafuegos de red y tráfico TCP/IP sin intermediación de señuelos ni honeypots.
+              Cumplimiento de <strong class="text-emerald-400">RF-01</strong>: Ingesta directa de registros de seguridad del sistema operativo, cortafuegos de red y tráfico TCP/IP sin intermediación de señuelos ni honeypots.
             </p>
           </div>
           <button onclick="refreshStatus()" class="px-4 py-2 rounded-xl bg-dark-surface border border-dark-border hover:bg-slate-800 text-xs text-slate-300 font-medium transition-colors flex items-center gap-2 self-start sm:self-auto">
@@ -484,7 +487,187 @@
 
 
     <!-- ═════════════════════════════════════════════════════════════════════
-         PESTAÑA 3: FIREWALL Y CUARENTENA (AUTOBAN)
+         PESTAÑA 3: AUDITORÍA Y DETECCIÓN NMAP
+         ═════════════════════════════════════════════════════════════════════ -->
+    <div id="tab-nmap" class="tab-content hidden space-y-6">
+
+      <div class="glass-panel rounded-2xl p-6 border-l-4 border-l-cyan-500">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <span>🎯</span> Módulo de Reconocimiento e Inspección Nmap (Auditoría de Red)
+            </h2>
+            <p class="text-xs text-slate-300 mt-1 max-w-3xl leading-relaxed">
+              Integración del vector de escaneo de la <strong class="text-emerald-400">Clase 1 y 2</strong>: Detecta ráfagas de escaneos SYN y Connect de Nmap (<code class="text-cyan-400">nmap -sS -p-</code>) e incluye un auditor de exposición de servicios locales para verificación de seguridad perimetral.
+            </p>
+          </div>
+          <button onclick="runNmapPortAudit(this)" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-500 hover:from-cyan-500 hover:to-teal-400 text-xs font-bold text-white shadow-lg shadow-cyan-600/20 flex items-center gap-2 transition-all">
+            <span>⚡</span> Ejecutar Auditoría Nmap
+          </button>
+        </div>
+      </div>
+
+      <!-- Tarjeta Explicativa de Detección Nmap -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div class="glass-panel rounded-2xl p-5 border border-dark-border space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <span>🛡️</span> ¿Cómo Detecta NetTrap a Nmap?
+            </h3>
+            <span class="px-2 py-0.5 rounded font-mono text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold">RULE-002</span>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Cuando un atacante ejecuta <code class="text-cyan-400">nmap -sS &lt;IP&gt;</code> para buscar puertos abiertos, el recolector de tráfico detecta la ráfaga de conexiones TCP semi-abiertas en estado <code class="text-amber-400">SYN_RECEIVED</code>. Si supera el umbral configurado (5 toques en 60s), el SIEM:
+          </p>
+          <ul class="text-xs text-slate-400 space-y-1.5 list-disc pl-4 font-mono">
+            <li>Identifica la firma de escaneo de reconocimiento rápido.</li>
+            <li>Aísla la IP en Windows Firewall vía <code class="text-emerald-400">netsh advfirewall</code>.</li>
+            <li>Dispara la captura forense <code class="text-purple-400">.pcap</code> para Wireshark.</li>
+          </ul>
+        </div>
+
+        <div class="glass-panel rounded-2xl p-5 border border-dark-border space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <span>⚙️</span> Parámetros del Motor Nmap en el Host
+            </h3>
+            <span class="px-2 py-0.5 rounded font-mono text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">127.0.0.1</span>
+          </div>
+          <div class="p-3 rounded-xl bg-dark-surface/90 border border-dark-border text-[11px] font-mono space-y-2">
+            <div class="text-slate-400">Modo de Escaneo: <span class="text-cyan-400">TCP Connect / SYN Sweep</span></div>
+            <div class="text-slate-400">Puertos Críticos Auditados: <span class="text-white">21, 22, 80, 135, 445, 3389, 8000</span></div>
+            <div class="text-slate-400">Tiempo de Respuesta: <span class="text-emerald-400 font-bold">&lt; 150 ms por socket</span></div>
+            <div class="text-slate-400">Norma Aplicada: <span class="text-slate-300">ISO/IEC 27033-1 Cl. 10.3</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resultados de la Auditoría Nmap -->
+      <div class="glass-panel rounded-2xl p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span>📋</span> Resultados del Escaneo de Puertos Locales (Nmap Spec)
+          </h3>
+          <span class="text-xs font-mono text-slate-400" id="nmap-audit-timestamp">Presiona "Ejecutar Auditoría Nmap" para escanear</span>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-dark-border">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-dark-surface/90 border-b border-dark-border text-slate-400 font-mono text-[11px] uppercase">
+                <th class="py-3 px-4">Puerto</th>
+                <th class="py-3 px-4">Servicio Asignado</th>
+                <th class="py-3 px-4">Estado del Puerto</th>
+                <th class="py-3 px-4">Evaluación de Riesgo</th>
+                <th class="py-3 px-4 text-right">Protección NetTrap</th>
+              </tr>
+            </thead>
+            <tbody id="nmap-tbody" class="divide-y divide-dark-border font-sans">
+              <tr>
+                <td colspan="5" class="text-center py-8 text-slate-500 font-mono text-xs">
+                  Aún no se ha ejecutado el escaneo. Haz clic en "Ejecutar Auditoría Nmap" arriba.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+
+    <!-- ═════════════════════════════════════════════════════════════════════
+         PESTAÑA 4: FORENSE WIRESHARK (PCAP EXPORTER & VIEWER)
+         ═════════════════════════════════════════════════════════════════════ -->
+    <div id="tab-wireshark" class="tab-content hidden space-y-6">
+
+      <div class="glass-panel rounded-2xl p-6 border-l-4 border-l-purple-500">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <span>🦈</span> Centro Forense Wireshark (NIST SP 800-218 PW.9.1)
+            </h2>
+            <p class="text-xs text-slate-300 mt-1 max-w-3xl leading-relaxed">
+              Cumplimiento del <strong class="text-purple-400">Entregable 2 de la Clase 1 y 2</strong>: Generación inmutable de archivos de captura de paquetes estándar <code class="text-purple-300">.pcap</code> (Magic <code class="text-emerald-400">0xA1B2C3D4</code>) para auditoría e inspección profunda en Wireshark.
+            </p>
+          </div>
+          <button onclick="fetchWiresharkPcaps()" class="px-4 py-2 rounded-xl bg-dark-surface border border-dark-border hover:bg-slate-800 text-xs text-slate-300 font-medium transition-colors flex items-center gap-2 self-start sm:self-auto">
+            <span>🔄</span> Refrescar Capturas
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabla de Capturas PCAP Forenses -->
+      <div class="glass-panel rounded-2xl p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span>📁</span> Repositorio de Evidencias Forenses (.pcap) Almacenadas
+          </h3>
+          <span class="text-xs font-mono text-slate-400" id="pcap-count-badge">0 archivos encontrados</span>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-dark-border">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-dark-surface/90 border-b border-dark-border text-slate-400 font-mono text-[11px] uppercase">
+                <th class="py-3 px-4">Archivo .pcap</th>
+                <th class="py-3 px-4">IP Agresora</th>
+                <th class="py-3 px-4">Fecha de Captura</th>
+                <th class="py-3 px-4">Tamaño</th>
+                <th class="py-3 px-4">Comando Wireshark</th>
+                <th class="py-3 px-4 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="wireshark-tbody" class="divide-y divide-dark-border font-sans">
+              <tr>
+                <td colspan="6" class="text-center py-8 text-slate-500 font-mono text-xs">
+                  Cargando archivos de evidencia .pcap...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Visor de Tramas Decodificadas en Vivo -->
+      <div id="pcap-inspector-card" class="glass-panel rounded-2xl p-5 border border-purple-500/30 space-y-3 hidden">
+        <div class="flex items-center justify-between border-b border-dark-border pb-3">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2 font-mono">
+            <span>🔬</span> ANÁLISIS FORENSE DE TRAMA DECOMISADA (DECODIFICACIÓN TIPO WIRESHARK)
+          </h3>
+          <button onclick="document.getElementById('pcap-inspector-card').classList.add('hidden')" class="text-slate-400 hover:text-white text-xs">✕ Cerrar</button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
+          <div class="p-3 rounded-xl bg-dark-surface/90 border border-dark-border space-y-1.5">
+            <div class="text-purple-400 font-bold uppercase tracking-wider text-[10px]">Capa 2: Enlace de Datos</div>
+            <div class="text-slate-400">Encabezado: <span class="text-white">Ethernet II</span></div>
+            <div class="text-slate-400">EtherType: <span class="text-emerald-400 font-bold" id="ins-eth-type">0x0800 (IPv4)</span></div>
+            <div class="text-slate-400">Longitud de Trama: <span class="text-slate-300" id="ins-frame-len">-- bytes</span></div>
+          </div>
+          <div class="p-3 rounded-xl bg-dark-surface/90 border border-dark-border space-y-1.5">
+            <div class="text-cyan-400 font-bold uppercase tracking-wider text-[10px]">Capa 3: Red (IPv4)</div>
+            <div class="text-slate-400">IP Origen: <span class="text-rose-400 font-bold" id="ins-ip-src">--</span></div>
+            <div class="text-slate-400">IP Destino: <span class="text-white" id="ins-ip-dst">--</span></div>
+            <div class="text-slate-400">Protocolo: <span class="text-slate-300" id="ins-proto">6 (TCP)</span></div>
+          </div>
+          <div class="p-3 rounded-xl bg-dark-surface/90 border border-dark-border space-y-1.5">
+            <div class="text-amber-400 font-bold uppercase tracking-wider text-[10px]">Capa 4: Transporte (TCP)</div>
+            <div class="text-slate-400">Puerto Origen: <span class="text-slate-300" id="ins-port-src">--</span></div>
+            <div class="text-slate-400">Puerto Destino: <span class="text-white font-bold" id="ins-port-dst">--</span></div>
+            <div class="text-slate-400">Banderas: <span class="text-amber-400 font-bold" id="ins-tcp-flags">SYN</span></div>
+          </div>
+        </div>
+        <div class="p-3 rounded-xl bg-[#040711] border border-dark-border text-emerald-400 font-mono text-xs flex items-center justify-between">
+          <span id="ins-ws-cmd">wireshark -r evidencia.pcap</span>
+          <span class="text-slate-500 text-[10px]">NIST SP 800-218 PW.9.1 VERIFICADO</span>
+        </div>
+      </div>
+
+    </div>
+
+
+    <!-- ═════════════════════════════════════════════════════════════════════
+         PESTAÑA 5: FIREWALL & NATTED.CLOUD (POLÍTICAS ALLOW/DENY)
          ═════════════════════════════════════════════════════════════════════ -->
     <div id="tab-firewall" class="tab-content hidden space-y-6">
 
@@ -492,10 +675,10 @@
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 class="text-lg font-bold text-white flex items-center gap-2">
-              <span>🔒</span> Centro de Contención Perimetral · Windows Defender Firewall
+              <span>🔒</span> Matriz de Directivas Firewall · Modelo natted.cloud (Allow / Deny)
             </h2>
             <p class="text-xs text-slate-300 mt-1 max-w-3xl leading-relaxed">
-              Cumplimiento de <strong class="text-emerald-400">ISO/IEC 27033-4 Cl. 9.2</strong>: Aplicación de reglas perimetrales de aislamiento preventivo <em>(default-deny)</em> ante agresiones correlacionadas con temporizador de liberación de 300 segundos.
+              Cumplimiento de <strong class="text-emerald-400">ISO/IEC 27033-4 Cl. 9.2</strong>: Traslado directo de la jerarquía de reglas y filtrado de paquetes aprendidas en los laboratorios de <strong class="text-amber-300">natted.cloud</strong> hacia Windows Defender Firewall mediante comandos estructurados <code class="text-amber-400">netsh advfirewall</code>.
             </p>
           </div>
           <button onclick="refreshStatus()" class="px-4 py-2 rounded-xl bg-dark-surface border border-dark-border hover:bg-slate-800 text-xs text-slate-300 font-medium transition-colors flex items-center gap-2 self-start sm:self-auto">
@@ -504,16 +687,71 @@
         </div>
       </div>
 
-      <!-- Herramienta de Aislamiento Preventivo Manual -->
+      <!-- Tabla de Políticas Estilo natted.cloud -->
+      <div class="glass-panel rounded-2xl p-5 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span>📑</span> Jerarquía de Precedencia de Reglas (Lógica natted.cloud)
+          </h3>
+          <span class="text-xs font-mono text-emerald-400">ORDEN: ALLOW ➔ DENY ➔ DEFAULT-DENY</span>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-dark-border">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-dark-surface/90 border-b border-dark-border text-slate-400 font-mono text-[11px] uppercase">
+                <th class="py-3 px-4">Precedencia</th>
+                <th class="py-3 px-4">Acción natted.cloud</th>
+                <th class="py-3 px-4">Dirección</th>
+                <th class="py-3 px-4">Dirección IP / Red</th>
+                <th class="py-3 px-4">Puertos</th>
+                <th class="py-3 px-4">Mecanismo en Windows</th>
+                <th class="py-3 px-4 text-right">Justificación Normativa</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-dark-border font-mono text-xs">
+              <tr class="hover:bg-slate-800/40">
+                <td class="py-3 px-4 font-bold text-emerald-400">10 (Alta)</td>
+                <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">ALLOW</span></td>
+                <td class="py-3 px-4 text-slate-300">INBOUND</td>
+                <td class="py-3 px-4 text-white">Whitelist (Gateway / DNS / Subred Local)</td>
+                <td class="py-3 px-4 text-slate-300">Cualquiera</td>
+                <td class="py-3 px-4 text-slate-400">Exclusión en motor de correlación</td>
+                <td class="py-3 px-4 text-right text-slate-400">Anti-Spoofing (ISO 27033-4)</td>
+              </tr>
+              <tr class="hover:bg-slate-800/40">
+                <td class="py-3 px-4 font-bold text-rose-400">20 (Media)</td>
+                <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 font-bold">DENY / BLOCK</span></td>
+                <td class="py-3 px-4 text-slate-300">INBOUND</td>
+                <td class="py-3 px-4 text-rose-300 font-bold">IPs Hostiles en Cuarentena (AutoBan)</td>
+                <td class="py-3 px-4 text-slate-300">Todos (*:*)</td>
+                <td class="py-3 px-4 text-amber-300">netsh advfirewall add rule action=block</td>
+                <td class="py-3 px-4 text-right text-slate-400">Aislamiento Activo (Cl. 9.2)</td>
+              </tr>
+              <tr class="hover:bg-slate-800/40">
+                <td class="py-3 px-4 font-bold text-slate-400">30 (Baja)</td>
+                <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-slate-500/10 text-slate-400 border border-slate-500/20 font-bold">DEFAULT-DENY</span></td>
+                <td class="py-3 px-4 text-slate-300">INBOUND</td>
+                <td class="py-3 px-4 text-slate-400">0.0.0.0/0 (Todo origen no autorizado)</td>
+                <td class="py-3 px-4 text-slate-300">Puertos cerrados</td>
+                <td class="py-3 px-4 text-slate-400">Descarte nativo registrado en pfirewall.log</td>
+                <td class="py-3 px-4 text-right text-slate-400">Principio Menor Privilegio</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Herramienta de Aislamiento Manual -->
       <div class="glass-panel rounded-2xl p-5 space-y-3">
         <h3 class="text-sm font-bold text-white flex items-center gap-2">
-          <span>🛡️</span> Aislamiento Preventivo Inmediato (Operador SOC)
+          <span>🛡️</span> Inyección Manual de Regla de Aislamiento (Operador SOC)
         </h3>
         <p class="text-xs text-slate-400">Permite aplicar una regla de contención inmediata en Windows Defender Firewall para una dirección IP específica.</p>
         <div class="flex flex-col sm:flex-row gap-3 pt-1">
           <input type="text" id="manual-block-ip" placeholder="Ej: 198.51.100.55" class="flex-1 px-4 py-2 rounded-lg bg-dark-surface border border-dark-border text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 font-mono">
           <button onclick="submitManualBlock()" class="px-5 py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-md">
-            <span>🔒</span> Aplicar Aislamiento Firewall
+            <span>🔒</span> Aplicar Regla DENY en Firewall
           </button>
         </div>
       </div>
@@ -522,7 +760,7 @@
       <div class="glass-panel rounded-2xl p-5 space-y-4">
         <div class="flex items-center justify-between">
           <h3 class="text-sm font-bold text-white flex items-center gap-2">
-            <span>📋</span> Direcciones Hostiles en Cuarentena Activa
+            <span>📋</span> Direcciones Hostiles en Cuarentena Activa (AutoBan)
           </h3>
           <span class="text-xs font-mono text-slate-400">TEMPORIZADOR AUTOMÁTICO: 300 SEGUNDOS</span>
         </div>
@@ -554,7 +792,7 @@
 
 
     <!-- ═════════════════════════════════════════════════════════════════════
-         PESTAÑA 4: MATRIZ NIST CVEs
+         PESTAÑA 6: MATRIZ NIST CVEs
          ═════════════════════════════════════════════════════════════════════ -->
     <div id="tab-cves" class="tab-content hidden space-y-6">
 
@@ -576,95 +814,13 @@
 
     </div>
 
-
-    <!-- ═════════════════════════════════════════════════════════════════════
-         PESTAÑA 5: TELEMETRÍA FORENSE & EVENTOS NORMALIZADOS (RF-02)
-         ═════════════════════════════════════════════════════════════════════ -->
-    <div id="tab-telemetry" class="tab-content hidden space-y-6">
-
-      <div class="glass-panel rounded-2xl p-6 border-l-4 border-l-purple-500">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 class="text-lg font-bold text-white flex items-center gap-2">
-              <span>📜</span> Repositorio de Telemetría Normalizada en Tiempo Real (RF-02)
-            </h2>
-            <p class="text-xs text-slate-300 mt-1 max-w-3xl leading-relaxed">
-              Visualización de los eventos procesados en memoria listos para análisis forense, exportación de auditoría y revisión de paquetes binarios <code class="text-purple-400">.pcap</code> compatibles con Wireshark.
-            </p>
-          </div>
-          <button onclick="fetchEventsHistory()" class="px-4 py-2 rounded-xl bg-dark-surface border border-dark-border hover:bg-slate-800 text-xs text-slate-300 font-medium transition-colors flex items-center gap-2 self-start sm:self-auto">
-            <span>🔄</span> Refrescar Telemetría
-          </button>
-        </div>
-      </div>
-
-      <!-- Tabla de Eventos Normalizados -->
-      <div class="glass-panel rounded-2xl p-5 space-y-4">
-        <div class="flex items-center justify-between">
-          <h3 class="text-sm font-bold text-white flex items-center gap-2">
-            <span>📋</span> Últimos Eventos Normalizados Capturados
-          </h3>
-          <span class="text-xs font-mono text-slate-400" id="telemetry-count-badge">0 eventos en buffer</span>
-        </div>
-
-        <div class="overflow-x-auto rounded-xl border border-dark-border">
-          <table class="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr class="bg-dark-surface/90 border-b border-dark-border text-slate-400 font-mono text-[11px] uppercase">
-                <th class="py-3 px-4">Hora UTC</th>
-                <th class="py-3 px-4">Sensor Windows</th>
-                <th class="py-3 px-4">Severidad</th>
-                <th class="py-3 px-4">IP Remota</th>
-                <th class="py-3 px-4">Puerto</th>
-                <th class="py-3 px-4">Evento</th>
-                <th class="py-3 px-4 text-right">Inspector JSON</th>
-              </tr>
-            </thead>
-            <tbody id="telemetry-tbody" class="divide-y divide-dark-border font-sans">
-              <tr>
-                <td colspan="7" class="text-center py-8 text-slate-500 font-mono text-xs">
-                  Cargando eventos normalizados...
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-    </div>
-
   </main>
-
-  <!-- ═══════════════════════════════════════════════════════════════════════
-       MODAL: INSPECTOR JSON FORENSE
-       ═══════════════════════════════════════════════════════════════════════ -->
-  <div id="json-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="glass-panel rounded-2xl max-w-2xl w-full border border-dark-border p-5 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between border-b border-dark-border pb-3">
-        <h3 class="text-sm font-bold text-white flex items-center gap-2 font-mono">
-          <span>🔍</span> INSPECTOR DE EVENTO NORMALIZADO (RF-02 JSON)
-        </h3>
-        <button onclick="closeJSONModal()" class="text-slate-400 hover:text-white text-lg p-1">✕</button>
-      </div>
-      <div class="relative">
-        <pre id="modal-json-content" class="p-4 rounded-xl bg-[#040711] border border-dark-border text-emerald-400 font-mono text-xs overflow-x-auto max-h-96 custom-scrollbar"></pre>
-        <button onclick="copyModalJSON()" class="absolute top-3 right-3 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-mono border border-slate-700 transition-colors">
-          📋 Copiar
-        </button>
-      </div>
-      <div class="flex justify-end pt-2">
-        <button onclick="closeJSONModal()" class="px-4 py-2 rounded-lg bg-dark-surface border border-dark-border hover:bg-slate-800 text-xs text-white font-medium">
-          Cerrar Inspector
-        </button>
-      </div>
-    </div>
-  </div>
 
   <!-- Contenedor de Toasts Flotantes -->
   <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
 
   <!-- ═══════════════════════════════════════════════════════════════════════
-       JAVASCRIPT SOC CLIENT (ZERO TRUST & PRODUCTION GRADE)
+       JAVASCRIPT SOC CLIENT
        ═══════════════════════════════════════════════════════════════════════ -->
   <script>
     'use strict';
@@ -673,12 +829,10 @@
     let wsRetryDelay = 1000;
     let trafficChart = null;
     let alertsCache = [];
-    let telemetryCache = [];
     let audioAlertsEnabled = false;
     let audioCtx = null;
     const chartHistory = { labels: [], events: [], alerts: [] };
 
-    // Sanitización HTML estricta contra XSS
     function esc(str) {
       if (str === null || str === undefined) return '';
       return String(str)
@@ -689,7 +843,6 @@
         .replace(/'/g, '&#039;');
     }
 
-    // Navegación entre pestañas
     function switchTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
       const activePanel = document.getElementById(tabId);
@@ -706,12 +859,11 @@
         activeBtn.classList.remove('text-slate-400');
       }
 
-      if (tabId === 'tab-telemetry') {
-        fetchEventsHistory();
+      if (tabId === 'tab-wireshark') {
+        fetchWiresharkPcaps();
       }
     }
 
-    // Reloj digital en vivo
     function updateClock() {
       const now = new Date();
       document.getElementById('clock-local').textContent = now.toLocaleTimeString('es-CO');
@@ -719,13 +871,12 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // Sistema de Alertas Sonoras (Web Audio API sintético, sin archivos externos)
     function toggleAudioAlerts() {
       audioAlertsEnabled = !audioAlertsEnabled;
       const icon = document.getElementById('audio-icon');
       if (audioAlertsEnabled) {
         icon.textContent = '🔊';
-        showToast('Radar Sonoro Activado', 'Emitirá un sonido cibernético sutil ante intrusiones críticas.', 'NORMAL');
+        showToast('Radar Sonoro Activado', 'Emitirá un sonido cibernético ante intrusiones críticas.', 'NORMAL');
         playRadarChime(880, 0.1);
       } else {
         icon.textContent = '🔇';
@@ -755,12 +906,9 @@
         gain.connect(audioCtx.destination);
         osc.start();
         osc.stop(audioCtx.currentTime + duration);
-      } catch (e) {
-        // Ignorar si el navegador bloquea audio
-      }
+      } catch (e) {}
     }
 
-    // Inicialización del Gráfico Chart.js
     function initChart() {
       const ctx = document.getElementById('trafficChart').getContext('2d');
       const now = new Date();
@@ -900,7 +1048,6 @@
       }, 5500);
     }
 
-    // WebSocket en Tiempo Real con Handshake de Token Criptográfico
     function connectWS() {
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
       const token = "{{ token }}";
@@ -965,7 +1112,7 @@
       );
 
       if (alert.blocked) {
-        logToConsole('FIREWALL', `Aislamiento ejecutado para IP ${alert.ip_origen}. Cuarentena 300s.`, 'sys');
+        logToConsole('FIREWALL', `Aislamiento ejecutado para IP ${alert.ip_origen} bajo lógica natted.cloud.`, 'sys');
       }
 
       showToast(`[${sev}] Intrusión Detectada`, `${alert.ip_origen} ➔ ${alert.rule_name} (${cveStr})`, sev);
@@ -992,15 +1139,15 @@
       ).join(' ');
 
       const fwStatus = alert.blocked
-        ? `<span class="flex items-center gap-1.5 text-rose-400 font-mono font-semibold text-[11px]"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>BLOQUEADO</span>`
+        ? `<span class="flex items-center gap-1.5 text-rose-400 font-mono font-semibold text-[11px]"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>DENY / BLOCK</span>`
         : `<span class="text-slate-400 font-mono text-[11px]">Vigilancia</span>`;
 
       let pcapBtn = '<span class="text-slate-500 font-mono text-[10px]">No disp.</span>';
       if (alert.pcap_filename) {
-        pcapBtn = `<a href="/api/pcap/${encodeURIComponent(alert.pcap_filename)}" download class="px-2 py-0.5 rounded bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-400 font-mono text-[10px] transition-all inline-flex items-center gap-1"><span>📥</span> .pcap</a>`;
+        pcapBtn = `<a href="/api/pcap/${encodeURIComponent(alert.pcap_filename)}" download class="px-2 py-0.5 rounded bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 font-mono text-[10px] transition-all inline-flex items-center gap-1"><span>🦈</span> Wireshark</a>`;
       } else if (alert.pcap_path) {
         const fname = alert.pcap_path.split(/[\\/]/).pop();
-        pcapBtn = `<a href="/api/pcap/${encodeURIComponent(fname)}" download class="px-2 py-0.5 rounded bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-400 font-mono text-[10px] transition-all inline-flex items-center gap-1"><span>📥</span> .pcap</a>`;
+        pcapBtn = `<a href="/api/pcap/${encodeURIComponent(fname)}" download class="px-2 py-0.5 rounded bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 font-mono text-[10px] transition-all inline-flex items-center gap-1"><span>🦈</span> Wireshark</a>`;
       }
 
       tr.innerHTML = `
@@ -1054,7 +1201,6 @@
         if (!res.ok) return;
         const data = await res.json();
 
-        // Actualizar contadores
         const blockedList = data.ips_bloqueadas || [];
         document.getElementById('kpi-blocked-total').textContent = blockedList.length;
         document.getElementById('tab-blocked-badge').textContent = blockedList.length;
@@ -1063,7 +1209,6 @@
           document.getElementById('kpi-events-total').textContent = data.total_eventos;
         }
 
-        // Conteo por las 3 fuentes de Windows
         if (data.counts_by_source) {
           const evC = data.counts_by_source.windows_event_log || 0;
           const fwC = data.counts_by_source.windows_firewall || 0;
@@ -1095,7 +1240,7 @@
         tbody.innerHTML = `
           <tr>
             <td colspan="6" class="text-center py-8 text-slate-500 font-mono text-xs">
-              Sin IPs en cuarentena actualmente. El perímetro se encuentra despejado.
+              Sin IPs en cuarentena actualmente. El perímetro se encuentra despejado bajo política natted.cloud.
             </td>
           </tr>
         `;
@@ -1117,7 +1262,7 @@
 
         tr.innerHTML = `
           <td class="py-3 px-4 font-mono font-bold text-rose-400">${esc(ip)}</td>
-          <td class="py-3 px-4 font-mono text-slate-300">AutoBan Defensivo</td>
+          <td class="py-3 px-4 font-mono text-slate-300">Regla 20: DENY AutoBan</td>
           <td class="py-3 px-4 font-mono text-slate-400">${esc(blockedAt)}</td>
           <td class="py-3 px-4 font-mono text-amber-400 font-semibold">${esc(remaining)} s</td>
           <td class="py-3 px-4">${methodBadge}</td>
@@ -1145,7 +1290,7 @@
           refreshStatus();
         }
       } catch (e) {
-        showToast('Error', 'No se pudo conectar con el servicio de firewall: ' + e, 'CRITICAL');
+        showToast('Error', 'No se pudo comunicar con el cortafuegos: ' + e, 'CRITICAL');
       }
     }
 
@@ -1165,14 +1310,139 @@
         const data = await res.json();
         if (res.ok && data.success) {
           input.value = '';
-          logToConsole('FIREWALL', `Aislamiento manual ejecutado para ${ip} en Windows Firewall.`, 'warn');
-          showToast('Aislamiento Aplicado', `IP ${ip} bloqueada preventivamente durante 300s.`, 'HIGH');
+          logToConsole('FIREWALL', `Aislamiento ejecutado para ${ip} en Windows Firewall (Regla DENY).`, 'warn');
+          showToast('Aislamiento Aplicado', `IP ${ip} bloqueada según directiva natted.cloud durante 300s.`, 'HIGH');
           refreshStatus();
         } else {
           showToast('Error', data.detail || data.reason || 'IP no válida.', 'CRITICAL');
         }
       } catch (err) {
         showToast('Error', 'Fallo al comunicar con el cortafuegos: ' + err, 'CRITICAL');
+      }
+    }
+
+    // ── Módulo Nmap: Auditoría de Puertos en Vivo ────────────────────────────
+    async function runNmapPortAudit(btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span>⏳</span> Ejecutando Escaneo Nmap...`;
+      logToConsole('NMAP SCANNER', 'Iniciando barrido TCP SYN / Connect sobre puertos críticos del host...', 'warn');
+
+      try {
+        const res = await fetch('/api/nmap/audit', { method: 'POST' });
+        const data = await res.json();
+
+        document.getElementById('nmap-audit-timestamp').textContent = `Completado a las ${new Date().toLocaleTimeString('es-CO')} (${data.total_audited} puertos)`;
+        const tbody = document.getElementById('nmap-tbody');
+        tbody.innerHTML = '';
+
+        data.ports.forEach(p => {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-800/40 transition-colors font-mono text-xs';
+
+          const isOpen = p.state === 'OPEN';
+          const badgeState = isOpen 
+            ? `<span class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold">ABIERTO (OPEN)</span>`
+            : `<span class="px-2 py-0.5 rounded bg-slate-500/15 text-slate-400 border border-slate-500/30">FILTRADO / CERRADO</span>`;
+
+          const riskBadge = p.risk_assessment.includes('CRÍTICO')
+            ? `<span class="text-rose-400 font-bold">${esc(p.risk_assessment)}</span>`
+            : (p.risk_assessment.includes('ALTO') ? `<span class="text-amber-400 font-semibold">${esc(p.risk_assessment)}</span>` : `<span class="text-slate-400">Seguro</span>`);
+
+          tr.innerHTML = `
+            <td class="py-3 px-4 font-bold text-cyan-400">${esc(p.port)}/TCP</td>
+            <td class="py-3 px-4 text-white">${esc(p.service)}</td>
+            <td class="py-3 px-4">${badgeState}</td>
+            <td class="py-3 px-4">${riskBadge}</td>
+            <td class="py-3 px-4 text-right text-slate-400">Inspección NetTrap Activa</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        logToConsole('NMAP SCANNER', `Auditoría finalizada. ${data.total_audited} puertos analizados.`, 'sys');
+        showToast('Auditoría Nmap Finalizada', `Evaluados ${data.total_audited} puertos locales exitosamente.`, 'NORMAL');
+      } catch (e) {
+        showToast('Error', 'Fallo al ejecutar auditoría Nmap: ' + e, 'CRITICAL');
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = `<span>⚡</span> Re-ejecutar Auditoría Nmap`;
+    }
+
+    // ── Módulo Wireshark: Listado de PCAPs e Inspección de Tramas ────────────
+    async function fetchWiresharkPcaps() {
+      try {
+        const res = await fetch('/api/pcaps');
+        if (!res.ok) return;
+        const pcaps = await res.json();
+
+        document.getElementById('pcap-count-badge').textContent = `${pcaps.length} archivos de captura forense`;
+        const tbody = document.getElementById('wireshark-tbody');
+        tbody.innerHTML = '';
+
+        if (pcaps.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6" class="text-center py-8 text-slate-500 font-mono text-xs">
+                Aún no se han capturado incidentes en formato .pcap.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        pcaps.forEach(p => {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-800/40 transition-colors font-mono text-xs';
+
+          const timeFormatted = new Date(p.modified).toLocaleTimeString('es-CO');
+
+          tr.innerHTML = `
+            <td class="py-3 px-4 text-purple-300 font-bold">${esc(p.filename)}</td>
+            <td class="py-3 px-4 text-rose-400 font-semibold">${esc(p.ip)}</td>
+            <td class="py-3 px-4 text-slate-400">${esc(timeFormatted)}</td>
+            <td class="py-3 px-4 text-slate-300">${esc(p.size_bytes)} bytes</td>
+            <td class="py-3 px-4 text-cyan-400 font-mono text-[11px]">wireshark -r ${esc(p.filename)}</td>
+            <td class="py-3 px-4 text-right space-x-1.5">
+              <button onclick="inspectPcapFrame('${esc(p.filename)}')" class="px-2.5 py-1 rounded bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 text-[11px] font-semibold transition-all">
+                🔬 Inspeccionar Trama
+              </button>
+              <a href="${esc(p.download_url)}" download class="px-2.5 py-1 rounded bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 text-[11px] font-semibold transition-all inline-block">
+                📥 Descargar .pcap
+              </a>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (e) {
+        console.warn("Fallo al listar PCAPs:", e);
+      }
+    }
+
+    async function inspectPcapFrame(filename) {
+      try {
+        const res = await fetch(`/api/pcap/inspect/${encodeURIComponent(filename)}`);
+        const data = await res.json();
+        if (data.error) {
+          alert(data.error);
+          return;
+        }
+
+        document.getElementById('ins-eth-type').textContent = data.ethernet.type;
+        document.getElementById('ins-frame-len').textContent = `${data.frame_length_bytes} bytes`;
+        document.getElementById('ins-ip-src').textContent = data.ipv4.source_ip;
+        document.getElementById('ins-ip-dst').textContent = data.ipv4.destination_ip;
+        document.getElementById('ins-proto').textContent = data.ipv4.protocol;
+        document.getElementById('ins-port-src').textContent = data.tcp.source_port;
+        document.getElementById('ins-port-dst').textContent = data.tcp.destination_port;
+        document.getElementById('ins-tcp-flags').textContent = data.tcp.flags;
+        document.getElementById('ins-ws-cmd').textContent = data.wireshark_cli_command;
+
+        const card = document.getElementById('pcap-inspector-card');
+        card.classList.remove('hidden');
+        card.scrollIntoView({ behavior: 'smooth' });
+        showToast('Trama Decodificada', `Encabezados de ${filename} visualizados al estilo Wireshark.`, 'NORMAL');
+      } catch (err) {
+        alert("Error al inspeccionar PCAP: " + err);
       }
     }
 
@@ -1201,77 +1471,6 @@
       } catch (err) {
         console.warn("Fallo al cargar historial de alertas:", err);
       }
-    }
-
-    async function fetchEventsHistory() {
-      try {
-        const res = await fetch('/api/events?limit=60');
-        if (!res.ok) return;
-        const events = await res.json();
-        telemetryCache = events;
-
-        const tbody = document.getElementById('telemetry-tbody');
-        const badge = document.getElementById('telemetry-count-badge');
-        badge.textContent = `${events.length} eventos en buffer`;
-        tbody.innerHTML = '';
-
-        if (events.length === 0) {
-          tbody.innerHTML = `
-            <tr>
-              <td colspan="7" class="text-center py-8 text-slate-500 font-mono text-xs">
-                A la espera de nuevos eventos provenientes de los 3 sensores de Windows.
-              </td>
-            </tr>
-          `;
-          return;
-        }
-
-        events.forEach((ev, idx) => {
-          const tr = document.createElement('tr');
-          tr.className = 'hover:bg-slate-800/40 transition-colors';
-
-          const timeFormatted = ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString('es-CO') : '--:--:--';
-          let sevColor = 'text-slate-400 bg-slate-500/10 border-slate-500/20';
-          if (ev.severidad === 'CRITICAL') sevColor = 'text-rose-400 bg-rose-500/10 border-rose-500/20';
-          else if (ev.severidad === 'HIGH') sevColor = 'text-amber-400 bg-amber-500/10 border-amber-500/20';
-          else if (ev.severidad === 'MEDIUM') sevColor = 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20';
-
-          tr.innerHTML = `
-            <td class="py-3 px-4 font-mono text-slate-400 text-[11px]">${esc(timeFormatted)}</td>
-            <td class="py-3 px-4 font-mono text-slate-300 text-[11px]">${esc(ev.origen)}</td>
-            <td class="py-3 px-4"><span class="px-2 py-0.5 rounded font-mono text-[10px] border ${sevColor}">${esc(ev.severidad)}</span></td>
-            <td class="py-3 px-4 font-mono text-white font-semibold">${esc(ev.ip_origen)}</td>
-            <td class="py-3 px-4 font-mono text-slate-400">${esc(ev.puerto || '0')}</td>
-            <td class="py-3 px-4 text-slate-200 text-xs">${esc(ev.evento)}</td>
-            <td class="py-3 px-4 text-right">
-              <button onclick="inspectEventJSON(${idx})" class="px-2 py-0.5 rounded bg-dark-surface hover:bg-slate-800 border border-dark-border text-cyan-400 font-mono text-[11px] transition-colors">
-                { } JSON
-              </button>
-            </td>
-          `;
-          tbody.appendChild(tr);
-        });
-      } catch (err) {
-        console.warn("Fallo al cargar telemetría:", err);
-      }
-    }
-
-    function inspectEventJSON(index) {
-      const ev = telemetryCache[index];
-      if (!ev) return;
-      document.getElementById('modal-json-content').textContent = JSON.stringify(ev, null, 2);
-      document.getElementById('json-modal').classList.remove('hidden');
-    }
-
-    function closeJSONModal() {
-      document.getElementById('json-modal').classList.add('hidden');
-    }
-
-    function copyModalJSON() {
-      const text = document.getElementById('modal-json-content').textContent;
-      navigator.clipboard.writeText(text).then(() => {
-        showToast('Copiado al Portapapeles', 'Estructura JSON lista para análisis forense.', 'NORMAL');
-      });
     }
 
     function exportAlertsJSON() {
