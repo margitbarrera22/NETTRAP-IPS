@@ -16,7 +16,8 @@ PCAP_DIR  = DATA_DIR / "pcap"
 RULES_FILE = BASE_DIR / "rules" / "detection_rules.yaml"
 
 # ── Servidor web ──────────────────────────────────────────────────────────────
-HOST        = "127.0.0.1"   # solo local — no exponer a toda la red
+# 0.0.0.0 permite recibir tráfico y pruebas de ataque desde otros PCs de la red local
+HOST        = os.environ.get("NETTRAP_HOST", "0.0.0.0")
 PORT        = 8000
 SECRET_KEY  = os.environ.get("NETTRAP_SECRET", "cambiar_en_produccion_32bytes!!")
 

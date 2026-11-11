@@ -35,9 +35,9 @@ rules:
   - id: RULE-002
     name: "Escaneo Rápido de Reconocimiento de Red (Nmap SYN Scan)"
     source: "network_traffic"
-    description: "≥8 conexiones entrantes rápidas desde la misma IP en 30 s hacia puertos del sistema"
-    threshold: 8
-    window_seconds: 30
+    description: "≥4 conexiones entrantes rápidas desde la misma IP en 45 s hacia puertos del sistema"
+    threshold: 4
+    window_seconds: 45
     severity: "CRITICAL"
     action: "block_and_capture"
     cve_mitigated:
