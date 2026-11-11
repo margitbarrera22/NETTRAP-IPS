@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NetTrap-IPS · SOC & Mini-SIEM de Red</title>
+  <title>NetTrap-SIEM · Centro de Operaciones de Seguridad (SOC)</title>
 
   <!-- Tailwind CSS & Chart.js -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -23,11 +23,11 @@
           },
           colors: {
             dark: {
-              bg: '#080c14',
-              surface: '#0f172a',
-              card: '#131e33',
-              border: '#1e293b',
-              accent: '#1e2d4a'
+              bg: '#070b14',
+              surface: '#0d1527',
+              card: '#111c33',
+              border: '#1b2a47',
+              accent: '#1e335a'
             }
           }
         }
@@ -37,85 +37,97 @@
 
   <style>
     body {
-      background-color: #080c14;
+      background-color: #070b14;
       background-image: 
-        radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.08) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.06) 0px, transparent 50%);
+        radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.07) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(56, 189, 248, 0.05) 0px, transparent 50%);
       color: #f1f5f9;
     }
     .glass-panel {
-      background: rgba(19, 30, 51, 0.75);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      background: rgba(17, 28, 51, 0.75);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       border: 1px solid rgba(255, 255, 255, 0.08);
     }
     .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: #0b111e; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #25334d; border-radius: 4px; }
-    @keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.85); } }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #090e1a; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #223557; border-radius: 4px; }
+    @keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.8); } }
     .animate-pulse-dot { animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
 
   <!-- ═══════════════════════════════════════════════════════════════════════
-       HEADER PRINCIPAL
+       HEADER DEL SOC (OPERATIVO PROFESIONAL)
        ═══════════════════════════════════════════════════════════════════════ -->
-  <header class="glass-panel sticky top-0 z-50 border-b border-dark-border px-6 py-3.5 flex items-center justify-between">
-    <!-- Brand -->
-    <div class="flex items-center gap-4">
-      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 p-0.5 shadow-lg shadow-emerald-500/20 flex items-center justify-center">
+  <header class="glass-panel sticky top-0 z-50 border-b border-dark-border px-6 py-3 flex items-center justify-between">
+    <!-- Brand & Status -->
+    <div class="flex items-center gap-3.5">
+      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-400 p-0.5 shadow-lg shadow-emerald-500/20 flex items-center justify-center">
         <div class="h-full w-full bg-dark-bg rounded-[10px] flex items-center justify-center text-emerald-400 font-bold text-lg">
           🛡️
         </div>
       </div>
       <div>
         <div class="flex items-center gap-2.5">
-          <h1 class="text-lg font-extrabold tracking-tight text-white flex items-center gap-2">
+          <h1 class="text-base font-extrabold tracking-tight text-white flex items-center gap-1.5">
             NetTrap<span class="text-emerald-400">SIEM</span>
+            <span class="text-slate-400 font-light text-sm">/ IPS</span>
           </h1>
           <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold tracking-wide">
-            ENTERPRISE SOC v3.0 · ZERO TRUST
+            SOC OPERATIVO v3.2 · ZERO TRUST
           </span>
         </div>
-        <p class="text-xs text-slate-400 font-medium">Analizador Multifuente Windows (Event Log, Firewall, Red) & Mitigación Activa</p>
+        <p class="text-[11px] text-slate-400 font-medium">Instituto Universitario de la Paz (UNIPAZ) · Monitoreo Multifuente en Tiempo Real</p>
       </div>
     </div>
 
-    <!-- Pestañas de Navegación -->
-    <nav class="hidden md:flex items-center gap-1 bg-dark-surface/80 p-1.5 rounded-xl border border-dark-border">
-      <button onclick="switchTab('tab-soc')" id="btn-tab-soc" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 transition-all flex items-center gap-2">
-        <span>📊</span> Centro de Operaciones (SOC)
+    <!-- Pestañas de Navegación del SOC -->
+    <nav class="hidden md:flex items-center gap-1 bg-dark-surface/90 p-1.5 rounded-xl border border-dark-border">
+      <button onclick="switchTab('tab-soc')" id="btn-tab-soc" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 transition-all flex items-center gap-1.5">
+        <span>📊</span> Centro de Operaciones
       </button>
-      <button onclick="switchTab('tab-simulator')" id="btn-tab-simulator" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-2">
-        <span>🧪</span> Pruebas de Ingesta (Demo)
+      <button onclick="switchTab('tab-sensors')" id="btn-tab-sensors" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-1.5">
+        <span>🗂️</span> Sensores Windows (RF-01)
       </button>
-      <button onclick="switchTab('tab-firewall')" id="btn-tab-firewall" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-2">
-        <span>🔒</span> AutoBan Firewall (<span id="tab-blocked-badge">0</span>)
+      <button onclick="switchTab('tab-firewall')" id="btn-tab-firewall" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-1.5">
+        <span>🔒</span> Cuarentena Firewall (<span id="tab-blocked-badge">0</span>)
       </button>
-      <button onclick="switchTab('tab-cves')" id="btn-tab-cves" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-2">
+      <button onclick="switchTab('tab-cves')" id="btn-tab-cves" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-1.5">
         <span>📋</span> Matriz NIST CVEs
+      </button>
+      <button onclick="switchTab('tab-telemetry')" id="btn-tab-telemetry" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-1.5">
+        <span>📜</span> Telemetría Forense
       </button>
     </nav>
 
-    <!-- Estado y Sesión -->
-    <div class="flex items-center gap-4">
+    <!-- Estado de Red, Reloj y Controles -->
+    <div class="flex items-center gap-3">
+      <!-- Toggle de Sonido Radar -->
+      <button onclick="toggleAudioAlerts()" id="btn-audio" title="Activar/Desactivar alertas sonoras de intrusión" class="p-2 rounded-lg bg-dark-surface border border-dark-border text-slate-400 hover:text-emerald-400 hover:border-emerald-500/30 transition-colors text-xs flex items-center justify-center">
+        <span id="audio-icon">🔇</span>
+      </button>
+
+      <!-- Estado WebSocket -->
       <div id="ws-status" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono font-medium">
         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-dot"></span>
         <span id="ws-text">WS ONLINE</span>
       </div>
 
+      <!-- Reloj Local -->
       <div class="hidden lg:block text-right font-mono text-[11px] text-slate-400 leading-tight">
         <div id="clock-local" class="text-slate-200 font-semibold">--:--:--</div>
-        <div class="text-[9px] text-slate-500">DEFENSA ACTIVA</div>
+        <div class="text-[9px] text-emerald-400/90 font-mono">DEFENSA ACTIVA</div>
       </div>
 
-      <div class="flex items-center gap-3 pl-2 border-l border-dark-border">
+      <!-- Usuario y Salida -->
+      <div class="flex items-center gap-2.5 pl-2 border-l border-dark-border">
         <div class="text-right hidden sm:block">
           <div class="text-xs font-semibold text-white">{{ user }}</div>
-          <div class="text-[10px] text-emerald-400 font-mono">SOC_ADMIN</div>
+          <div class="text-[10px] text-emerald-400 font-mono">SOC_OPERATOR</div>
         </div>
-        <a href="/logout" title="Cerrar Sesión" class="p-2 rounded-lg bg-dark-surface border border-dark-border hover:bg-red-500/10 hover:border-red-500/30 text-slate-400 hover:text-red-400 transition-colors text-xs flex items-center justify-center">
+        <a href="/logout" title="Cerrar Sesión Segura" class="p-2 rounded-lg bg-dark-surface border border-dark-border hover:bg-red-500/10 hover:border-red-500/30 text-slate-400 hover:text-red-400 transition-colors text-xs flex items-center justify-center">
           ✕
         </a>
       </div>
@@ -128,14 +140,14 @@
   <main class="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6">
 
     <!-- ═════════════════════════════════════════════════════════════════════
-         PESTAÑA 1: SOC DASHBOARD
+         PESTAÑA 1: SOC DASHBOARD (CENTRO DE OPERACIONES)
          ═════════════════════════════════════════════════════════════════════ -->
     <div id="tab-soc" class="tab-content space-y-6">
 
-      <!-- Fila 1: KPIs Principales -->
+      <!-- Fila 1: KPIs Principales de Estado de Red -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
-        <!-- Nivel de Amenaza -->
+        <!-- Nivel de Amenaza DEFCON -->
         <div class="glass-panel rounded-2xl p-4 border-l-4 border-l-emerald-500">
           <div class="flex items-center justify-between text-slate-400 text-xs uppercase tracking-wider font-semibold">
             <span>Nivel de Amenaza</span>
@@ -143,10 +155,10 @@
           </div>
           <div class="mt-2 flex items-baseline gap-2">
             <span id="kpi-defcon" class="text-2xl font-black text-emerald-400 tracking-tight font-mono">NORMAL</span>
-            <span class="text-xs text-slate-500 font-mono">DEFCON 5</span>
+            <span id="kpi-defcon-sub" class="text-xs text-slate-400 font-mono">DEFCON 5</span>
           </div>
-          <p class="text-[11px] text-slate-400 mt-1">3 fuentes Windows operando continuamente</p>
-          <div class="mt-3 w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+          <p class="text-[11px] text-slate-400 mt-1">3 sensores de Windows vigilando activamente</p>
+          <div class="mt-3 w-full bg-slate-800/80 rounded-full h-1.5 overflow-hidden">
             <div id="defcon-bar" class="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" style="width: 20%"></div>
           </div>
         </div>
@@ -161,17 +173,17 @@
             <span id="kpi-alerts-total" class="text-2xl font-black text-rose-400 tracking-tight font-mono">0</span>
             <span class="text-xs text-rose-500/80 font-mono font-semibold">SIEM / IPS</span>
           </div>
-          <p class="text-[11px] text-slate-400 mt-1">Reglas YAML evaluadas en tiempo real</p>
-          <div class="mt-3 flex items-center justify-between text-[10px] text-slate-500 font-mono">
+          <p class="text-[11px] text-slate-400 mt-1">Evaluación en tiempo real con reglas YAML</p>
+          <div class="mt-3 flex items-center justify-between text-[10px] text-slate-400 font-mono">
             <span>Reglas: 4 activas</span>
             <span class="text-rose-400 font-semibold">ISO 27033-1</span>
           </div>
         </div>
 
-        <!-- IPs Aisladas -->
+        <!-- Aislamiento Firewall -->
         <div class="glass-panel rounded-2xl p-4 border-l-4 border-l-amber-500">
           <div class="flex items-center justify-between text-slate-400 text-xs uppercase tracking-wider font-semibold">
-            <span>Aislamiento Firewall</span>
+            <span>Aislamiento Perimetral</span>
             <span class="text-lg">🔒</span>
           </div>
           <div class="mt-2 flex items-baseline gap-2">
@@ -179,13 +191,13 @@
             <span class="text-xs text-slate-400 font-mono">IPs en Cuarentena</span>
           </div>
           <p class="text-[11px] text-slate-400 mt-1">Reglas dinámicas netsh advfirewall</p>
-          <div class="mt-3 flex items-center justify-between text-[10px] text-slate-500 font-mono">
-            <span>Timeout: 300s</span>
+          <div class="mt-3 flex items-center justify-between text-[10px] text-slate-400 font-mono">
+            <span>Liberación: 300s</span>
             <span class="text-amber-400">AutoBan Activo</span>
           </div>
         </div>
 
-        <!-- Ingesta Total -->
+        <!-- Ingesta Total Normalizada -->
         <div class="glass-panel rounded-2xl p-4 border-l-4 border-l-cyan-500">
           <div class="flex items-center justify-between text-slate-400 text-xs uppercase tracking-wider font-semibold">
             <span>Eventos Ingeridos (RF-01)</span>
@@ -193,18 +205,18 @@
           </div>
           <div class="mt-2 flex items-baseline gap-2">
             <span id="kpi-events-total" class="text-2xl font-black text-cyan-400 tracking-tight font-mono">0</span>
-            <span class="text-xs text-slate-500 font-mono">Total Normalizado</span>
+            <span class="text-xs text-slate-400 font-mono">Normalizados JSON</span>
           </div>
-          <p class="text-[11px] text-slate-400 mt-1">Formato JSON obligatorio RF-02</p>
-          <div class="mt-3 flex items-center justify-between text-[10px] text-slate-500 font-mono">
-            <span>Buffer Limit: 1000</span>
+          <p class="text-[11px] text-slate-400 mt-1">Esquema estándar estricto RF-02</p>
+          <div class="mt-3 flex items-center justify-between text-[10px] text-slate-400 font-mono">
+            <span>Buffer: 1000 ev</span>
             <span class="text-cyan-400">OWASP ASVS V5.1</span>
           </div>
         </div>
 
       </div>
 
-      <!-- Fila 2: Gráficos de Ingesta & Las 3 Fuentes Reales de Windows (RF-01) -->
+      <!-- Fila 2: Gráfico de Actividad & Las 3 Fuentes Reales de Windows (RF-01) -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         <!-- Gráfico en Vivo (Chart.js) -->
@@ -212,15 +224,15 @@
           <div class="flex items-center justify-between mb-4">
             <div>
               <h2 class="text-sm font-bold text-white flex items-center gap-2">
-                <span>📈</span> Ingesta de Eventos y Correlación de Amenazas
+                <span>📈</span> Flujo de Ingesta y Correlación de Seguridad
               </h2>
-              <p class="text-xs text-slate-400">Eventos procesados por segundo desde las fuentes de Windows y alertas generadas</p>
+              <p class="text-xs text-slate-400">Monitoreo continuo de eventos por segundo e intrusiones detectadas</p>
             </div>
             <span class="px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-mono">
-              REAL-TIME SYNC
+              REAL-TIME SYNC ●
             </span>
           </div>
-          <div class="h-56 w-full">
+          <div class="h-60 w-full">
             <canvas id="trafficChart"></canvas>
           </div>
         </div>
@@ -229,15 +241,15 @@
         <div class="glass-panel rounded-2xl p-5 flex flex-col justify-between">
           <div class="flex items-center justify-between mb-3">
             <h2 class="text-sm font-bold text-white flex items-center gap-2">
-              <span>🗂️</span> 3 Fuentes de Ingesta (RF-01)
+              <span>🗂️</span> 3 Sensores Nativos (RF-01)
             </h2>
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
           </div>
-          <p class="text-xs text-slate-400 mb-3">Monitoreo activo nativo sin requerir puertos falsos ni señuelos</p>
+          <p class="text-xs text-slate-400 mb-3">Recolección real en Windows sin señuelos ni puertos falsos</p>
 
           <div class="space-y-3 flex-1">
             <!-- Fuente 1: Windows Event Log -->
-            <div class="p-3.5 rounded-xl bg-dark-surface/60 border border-dark-border flex items-center justify-between">
+            <div class="p-3.5 rounded-xl bg-dark-surface/70 border border-dark-border flex items-center justify-between">
               <div class="flex items-center gap-3">
                 <span class="text-xl">🪟</span>
                 <div>
@@ -252,7 +264,7 @@
             </div>
 
             <!-- Fuente 2: Windows Firewall -->
-            <div class="p-3.5 rounded-xl bg-dark-surface/60 border border-dark-border flex items-center justify-between">
+            <div class="p-3.5 rounded-xl bg-dark-surface/70 border border-dark-border flex items-center justify-between">
               <div class="flex items-center gap-3">
                 <span class="text-xl">🔥</span>
                 <div>
@@ -267,12 +279,12 @@
             </div>
 
             <!-- Fuente 3: Tráfico de Red -->
-            <div class="p-3.5 rounded-xl bg-dark-surface/60 border border-dark-border flex items-center justify-between">
+            <div class="p-3.5 rounded-xl bg-dark-surface/70 border border-dark-border flex items-center justify-between">
               <div class="flex items-center gap-3">
                 <span class="text-xl">📡</span>
                 <div>
                   <div class="text-xs font-bold text-white">Tráfico de Red & Sockets</div>
-                  <div class="text-[10px] text-slate-400 font-mono">Inspección TCP/IP / TShark</div>
+                  <div class="text-[10px] text-slate-400 font-mono">Inspección TCP/IP Sockets</div>
                 </div>
               </div>
               <div class="text-right">
@@ -296,12 +308,12 @@
             <p class="text-xs text-slate-400">Intrusiones detectadas mediante reglas YAML y mitigadas en Windows Firewall</p>
           </div>
           <div class="flex items-center gap-2">
-            <input type="text" id="filter-ip" onkeyup="filterAlertsTable()" placeholder="Filtrar por IP..." class="px-3 py-1.5 rounded-lg bg-dark-surface border border-dark-border text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-mono">
+            <input type="text" id="filter-ip" onkeyup="filterAlertsTable()" placeholder="Filtrar por IP o regla..." class="px-3 py-1.5 rounded-lg bg-dark-surface border border-dark-border text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-mono">
             <button onclick="fetchAlertsHistory()" class="px-3 py-1.5 rounded-lg bg-dark-surface border border-dark-border hover:bg-slate-800 text-xs text-slate-300 font-medium transition-colors flex items-center gap-1.5">
               <span>🔄</span> Refrescar
             </button>
-            <button onclick="clearAlertsView()" class="px-3 py-1.5 rounded-lg bg-dark-surface border border-dark-border hover:bg-slate-800 text-xs text-slate-400 font-medium transition-colors">
-              Limpiar Vista
+            <button onclick="exportAlertsJSON()" class="px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 hover:bg-emerald-500/25 text-xs text-emerald-300 font-medium transition-colors flex items-center gap-1">
+              <span>📥</span> Exportar JSON
             </button>
           </div>
         </div>
@@ -323,7 +335,7 @@
             <tbody id="alerts-tbody" class="divide-y divide-dark-border font-sans">
               <tr id="empty-alerts-row">
                 <td colspan="8" class="text-center py-10 text-slate-500 font-mono text-xs">
-                  📡 Sistema en guardia. Ninguna agresión anómala detectada en este momento.
+                  📡 Sistema en guardia continua. Ninguna agresión anómala detectada en este momento.
                 </td>
               </tr>
             </tbody>
@@ -340,14 +352,14 @@
               <span class="w-2.5 h-2.5 rounded-full bg-amber-500/80"></span>
               <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></span>
             </div>
-            <h3 class="text-xs font-mono font-bold text-slate-300 ml-2">TELEMETRÍA NORMALIZADA EN VIVO (RF-02 JSON STREAM)</h3>
+            <h3 class="text-xs font-mono font-bold text-slate-300 ml-2">BITÁCORA EN VIVO DEL MOTOR SIEM (ZERO TRUST AUDIT STREAM)</h3>
           </div>
           <span class="text-[10px] font-mono text-slate-500">AUTO-SCROLL ENABLED</span>
         </div>
         <div id="live-console" class="h-32 rounded-xl bg-[#040711] border border-dark-border p-3 font-mono text-[11px] text-emerald-400 overflow-y-auto space-y-1 custom-scrollbar">
-          <div class="text-slate-500">[INIT] NetTrap-IPS SIEM Engine iniciado bajo arquitectura Zero Trust.</div>
-          <div class="text-slate-500">[COLLECTORS] 3 fuentes reales de Windows enlazadas (EventLog, Firewall, Tráfico).</div>
-          <div class="text-slate-500">[CORRELATOR] Motor de correlación activo con reglas YAML.</div>
+          <div class="text-slate-500">[INIT] NetTrap-SIEM Engine en línea bajo arquitectura Zero Trust (NIST SP 800-207).</div>
+          <div class="text-slate-500">[COLLECTORS] 3 sensores nativos de Windows enlazados (EventLog, Firewall, Tráfico).</div>
+          <div class="text-slate-500">[CORRELATOR] Motor de correlación activo con reglas YAML y ventanas deslizantes.</div>
         </div>
       </div>
 
@@ -355,128 +367,117 @@
 
 
     <!-- ═════════════════════════════════════════════════════════════════════
-         PESTAÑA 2: PRUEBAS DE INGESTA (DEMO DOCENTE)
+         PESTAÑA 2: SENSORES DE WINDOWS (RF-01 DETALLE EN VIVO)
          ═════════════════════════════════════════════════════════════════════ -->
-    <div id="tab-simulator" class="tab-content hidden space-y-6">
+    <div id="tab-sensors" class="tab-content hidden space-y-6">
 
       <div class="glass-panel rounded-2xl p-6 border-l-4 border-l-cyan-500">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 class="text-lg font-bold text-white flex items-center gap-2">
-              <span>🧪</span> Consola de Pruebas de Ingesta y Correlación (Demostración al Docente)
+              <span>🗂️</span> Diagnóstico y Estado de las 3 Fuentes Nativas de Windows (RF-01)
             </h2>
-            <p class="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
-              Permite demostrar cómo NetTrap-IPS procesa eventos reales de las 3 fuentes de Windows, los normaliza a JSON (RF-02), evalúa el umbral YAML (RF-03) y dispara la mitigación en el Firewall de Windows con su evidencia forense.
+            <p class="text-xs text-slate-300 mt-1 max-w-3xl leading-relaxed">
+              Cumplimiento del requerimiento funcional <strong class="text-emerald-400">RF-01</strong>: Ingesta directa de registros de seguridad del sistema operativo, cortafuegos de red y tráfico TCP/IP sin intermediación de señuelos ni honeypots.
             </p>
           </div>
-          <button onclick="triggerMassiveSimulation(this)" class="px-5 py-3 rounded-xl bg-gradient-to-r from-rose-600 to-red-500 hover:from-rose-500 hover:to-red-400 font-bold text-white text-xs tracking-wide shadow-lg shadow-rose-600/30 flex items-center justify-center gap-2 transition-all">
-            <span>💥</span> DISPARAR PRUEBA MULTIFUENTE COMPLETA
+          <button onclick="refreshStatus()" class="px-4 py-2 rounded-xl bg-dark-surface border border-dark-border hover:bg-slate-800 text-xs text-slate-300 font-medium transition-colors flex items-center gap-2 self-start sm:self-auto">
+            <span>🔄</span> Actualizar Sensores
           </button>
         </div>
       </div>
 
-      <!-- Tarjetas de las 3 Fuentes para Pruebas -->
+      <!-- Grid de los 3 Sensores con Detalle Técnico -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
 
-        <!-- Prueba Fuente 1: Windows Event Log -->
-        <div class="glass-panel rounded-2xl p-5 border border-dark-border hover:border-emerald-500/40 transition-all flex flex-col justify-between">
+        <!-- Sensor 1: Windows Event Log -->
+        <div class="glass-panel rounded-2xl p-5 border border-dark-border flex flex-col justify-between">
           <div>
             <div class="flex items-center justify-between">
               <span class="text-2xl">🪟</span>
-              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 font-bold">RULE-001</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">ACTIVO ●</span>
             </div>
-            <h3 class="text-sm font-bold text-white mt-3">Fuerza Bruta Windows (EventID 4625)</h3>
-            <p class="text-xs text-slate-400 mt-1">Genera 5 eventos repetidos de fallo de autenticación en Security.evtx.</p>
+            <h3 class="text-sm font-bold text-white mt-3">Windows Event Log</h3>
+            <p class="text-xs text-slate-400 mt-1">Canal de auditoría Security y eventos de autenticación.</p>
             
-            <div class="mt-3 p-2.5 rounded-lg bg-dark-surface/80 border border-dark-border text-[11px] font-mono space-y-1">
-              <div class="text-slate-400">Fuente: <span class="text-emerald-400">Windows Event Log</span></div>
-              <div class="text-slate-400">CVE Mitigado: <span class="text-rose-400 font-bold">CVE-2019-0708 (BlueKeep)</span></div>
+            <div class="mt-4 p-3 rounded-xl bg-dark-surface/90 border border-dark-border text-[11px] font-mono space-y-2">
+              <div class="text-slate-400">Canal: <span class="text-cyan-400">Security.evtx</span></div>
+              <div class="text-slate-400">Eventos Auditados: <span class="text-emerald-400 font-bold">4625 (Logon Fail), 4624</span></div>
+              <div class="text-slate-400">Comando Nativo: <span class="text-slate-300">wevtutil qe Security</span></div>
+              <div class="text-slate-400">Intervalo de Polling: <span class="text-slate-300">Cada 4 segundos</span></div>
             </div>
           </div>
-
-          <div class="mt-4 pt-3 border-t border-dark-border">
-            <button onclick="runSimulation('windows_event_log', 'Fuerza Bruta Login Windows', '198.51.100.22', 5, 445, this)" class="w-full py-2 px-3 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-semibold text-xs transition-all flex items-center justify-center gap-2">
-              <span>▶</span> Simular 5 Fallos de Login
-            </button>
+          <div class="mt-4 pt-3 border-t border-dark-border flex items-center justify-between text-xs">
+            <span class="text-slate-400">Eventos Registrados:</span>
+            <span class="font-mono font-bold text-white" id="sensor-count-event">0</span>
           </div>
         </div>
 
-        <!-- Prueba Fuente 2: Windows Firewall -->
-        <div class="glass-panel rounded-2xl p-5 border border-dark-border hover:border-amber-500/40 transition-all flex flex-col justify-between">
+        <!-- Sensor 2: Windows Defender Firewall -->
+        <div class="glass-panel rounded-2xl p-5 border border-dark-border flex flex-col justify-between">
           <div>
             <div class="flex items-center justify-between">
               <span class="text-2xl">🔥</span>
-              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/10 text-amber-400 font-bold">RULE-003</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">ACTIVO ●</span>
             </div>
-            <h3 class="text-sm font-bold text-white mt-3">Violaciones Firewall (DROP Events)</h3>
-            <p class="text-xs text-slate-400 mt-1">Genera 4 paquetes bloqueados reiterados en pfirewall.log.</p>
+            <h3 class="text-sm font-bold text-white mt-3">Windows Defender Firewall</h3>
+            <p class="text-xs text-slate-400 mt-1">Inspección de paquetes descartados y violaciones de directiva.</p>
             
-            <div class="mt-3 p-2.5 rounded-lg bg-dark-surface/80 border border-dark-border text-[11px] font-mono space-y-1">
-              <div class="text-slate-400">Fuente: <span class="text-amber-400">Windows Defender Firewall</span></div>
-              <div class="text-slate-400">CVE Mitigado: <span class="text-rose-400 font-bold">CVE-2015-3306</span></div>
+            <div class="mt-4 p-3 rounded-xl bg-dark-surface/90 border border-dark-border text-[11px] font-mono space-y-2">
+              <div class="text-slate-400">Archivo: <span class="text-cyan-400">pfirewall.log</span></div>
+              <div class="text-slate-400">Ruta: <span class="text-slate-400 truncate block text-[10px]">C:\Windows\System32\LogFiles...</span></div>
+              <div class="text-slate-400">Acción Capturada: <span class="text-rose-400 font-bold">TCP / UDP DROP</span></div>
+              <div class="text-slate-400">Modo de Lectura: <span class="text-slate-300">Tail incremental continuo</span></div>
             </div>
           </div>
-
-          <div class="mt-4 pt-3 border-t border-dark-border">
-            <button onclick="runSimulation('windows_firewall', 'Violación de Políticas Firewall', '185.220.101.42', 4, 21, this)" class="w-full py-2 px-3 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-semibold text-xs transition-all flex items-center justify-center gap-2">
-              <span>▶</span> Simular 4 Bloqueos DROP
-            </button>
+          <div class="mt-4 pt-3 border-t border-dark-border flex items-center justify-between text-xs">
+            <span class="text-slate-400">Eventos Registrados:</span>
+            <span class="font-mono font-bold text-white" id="sensor-count-fw">0</span>
           </div>
         </div>
 
-        <!-- Prueba Fuente 3: Tráfico de Red -->
-        <div class="glass-panel rounded-2xl p-5 border border-dark-border hover:border-cyan-500/40 transition-all flex flex-col justify-between">
+        <!-- Sensor 3: Tráfico de Red -->
+        <div class="glass-panel rounded-2xl p-5 border border-dark-border flex flex-col justify-between">
           <div>
             <div class="flex items-center justify-between">
               <span class="text-2xl">📡</span>
-              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-500/10 text-cyan-400 font-bold">RULE-002</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">ACTIVO ●</span>
             </div>
-            <h3 class="text-sm font-bold text-white mt-3">Escaneo de Red Rápido (Nmap SYN)</h3>
-            <p class="text-xs text-slate-400 mt-1">Genera ráfaga de 8 conexiones de reconocimiento hacia el host.</p>
+            <h3 class="text-sm font-bold text-white mt-3">Tráfico de Red & Sockets</h3>
+            <p class="text-xs text-slate-400 mt-1">Inspección en vivo de conexiones activas hacia puertos del host.</p>
             
-            <div class="mt-3 p-2.5 rounded-lg bg-dark-surface/80 border border-dark-border text-[11px] font-mono space-y-1">
-              <div class="text-slate-400">Fuente: <span class="text-cyan-400">Tráfico de Red & Sockets</span></div>
-              <div class="text-slate-400">CVE Mitigado: <span class="text-rose-400 font-bold">CVE-2024-37032 (Ollama Recon)</span></div>
+            <div class="mt-4 p-3 rounded-xl bg-dark-surface/90 border border-dark-border text-[11px] font-mono space-y-2">
+              <div class="text-slate-400">Herramienta: <span class="text-cyan-400">netstat -n -p tcp</span></div>
+              <div class="text-slate-400">Estados Monitoreados: <span class="text-amber-400">SYN_RECEIVED, ESTABLISHED</span></div>
+              <div class="text-slate-400">Detección: <span class="text-emerald-400 font-bold">Ráfagas anómalas / Sondeo</span></div>
+              <div class="text-slate-400">Evidencia Forense: <span class="text-slate-300">Generación estándar .pcap</span></div>
             </div>
           </div>
-
-          <div class="mt-4 pt-3 border-t border-dark-border">
-            <button onclick="runSimulation('network_traffic', 'Nmap Reconocimiento SYN', '45.33.32.156', 8, 8000, this)" class="w-full py-2 px-3 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 font-semibold text-xs transition-all flex items-center justify-center gap-2">
-              <span>▶</span> Simular Escaneo SYN (8 Conexiones)
-            </button>
+          <div class="mt-4 pt-3 border-t border-dark-border flex items-center justify-between text-xs">
+            <span class="text-slate-400">Eventos Registrados:</span>
+            <span class="font-mono font-bold text-white" id="sensor-count-net">0</span>
           </div>
         </div>
 
       </div>
 
-      <!-- Configuración Personalizada -->
-      <div class="glass-panel rounded-2xl p-5 space-y-4">
-        <h3 class="text-sm font-bold text-white flex items-center gap-2">
-          <span>⚙️</span> Inyección Manual de Eventos Normalizados (Zero Trust Validated)
+      <!-- Explicación Normativa de Ingesta -->
+      <div class="glass-panel rounded-2xl p-5 border border-dark-border space-y-3">
+        <h3 class="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+          <span>📜</span> Esquema de Normalización JSON Estricto (RF-02 / OWASP ASVS V5.1.1)
         </h3>
-        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
-          <div>
-            <label class="block text-xs text-slate-400 font-mono mb-1">FUENTE DE ORIGEN (RF-01)</label>
-            <select id="custom-source" class="w-full px-3 py-2 rounded-lg bg-dark-surface border border-dark-border text-xs text-white font-mono focus:outline-none focus:border-emerald-500">
-              <option value="windows_event_log">Windows Event Log</option>
-              <option value="windows_firewall">Windows Firewall</option>
-              <option value="network_traffic" selected>Tráfico de Red / Sockets</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs text-slate-400 font-mono mb-1">IP ATACANTE</label>
-            <input type="text" id="custom-ip" value="192.168.1.150" class="w-full px-3 py-2 rounded-lg bg-dark-surface border border-dark-border text-xs text-white font-mono focus:outline-none focus:border-emerald-500">
-          </div>
-          <div>
-            <label class="block text-xs text-slate-400 font-mono mb-1">CANTIDAD DE EVENTOS</label>
-            <input type="number" id="custom-repeat" min="1" max="20" value="6" class="w-full px-3 py-2 rounded-lg bg-dark-surface border border-dark-border text-xs text-white font-mono focus:outline-none focus:border-emerald-500">
-          </div>
-          <div class="flex items-end">
-            <button onclick="launchCustomTest()" class="w-full py-2 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs transition-all shadow-md shadow-emerald-500/20">
-              Inyectar en Motor SIEM
-            </button>
-          </div>
-        </div>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          Cada evento que ingresa desde cualquiera de los 3 sensores pasa por una función de saneamiento y normalización que valida matemáticamente la dirección IP (<code class="text-emerald-400">ipaddress.ip_address</code>), rechaza caracteres no conformes y genera la estructura estandarizada requerida:
+        </p>
+        <pre class="p-3 rounded-xl bg-[#040711] border border-dark-border text-emerald-400 font-mono text-[11px] overflow-x-auto">{
+  "timestamp": "2026-11-10T20:25:00.000000+00:00",
+  "origen": "windows_event_log | windows_firewall | network_traffic",
+  "severidad": "CRITICAL | HIGH | MEDIUM | LOW | INFO",
+  "evento": "Descripción normalizada del suceso",
+  "ip_origen": "198.51.100.22",
+  "puerto": 445,
+  "descripcion": "Detalle técnico del evento capturado"
+}</pre>
       </div>
 
     </div>
@@ -491,10 +492,10 @@
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 class="text-lg font-bold text-white flex items-center gap-2">
-              <span>🔒</span> Centro de Contención de Red · Windows Defender Firewall
+              <span>🔒</span> Centro de Contención Perimetral · Windows Defender Firewall
             </h2>
-            <p class="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
-              Cumplimiento de <strong class="text-emerald-400">ISO/IEC 27033-4 Cl. 9.2</strong>: Aplicación de reglas de aislamiento preventivo <em>(default-deny)</em> ante agresiones correlacionadas con temporizador de liberación de 300 segundos.
+            <p class="text-xs text-slate-300 mt-1 max-w-3xl leading-relaxed">
+              Cumplimiento de <strong class="text-emerald-400">ISO/IEC 27033-4 Cl. 9.2</strong>: Aplicación de reglas perimetrales de aislamiento preventivo <em>(default-deny)</em> ante agresiones correlacionadas con temporizador de liberación de 300 segundos.
             </p>
           </div>
           <button onclick="refreshStatus()" class="px-4 py-2 rounded-xl bg-dark-surface border border-dark-border hover:bg-slate-800 text-xs text-slate-300 font-medium transition-colors flex items-center gap-2 self-start sm:self-auto">
@@ -503,11 +504,25 @@
         </div>
       </div>
 
+      <!-- Herramienta de Aislamiento Preventivo Manual -->
+      <div class="glass-panel rounded-2xl p-5 space-y-3">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <span>🛡️</span> Aislamiento Preventivo Inmediato (Operador SOC)
+        </h3>
+        <p class="text-xs text-slate-400">Permite aplicar una regla de contención inmediata en Windows Defender Firewall para una dirección IP específica.</p>
+        <div class="flex flex-col sm:flex-row gap-3 pt-1">
+          <input type="text" id="manual-block-ip" placeholder="Ej: 198.51.100.55" class="flex-1 px-4 py-2 rounded-lg bg-dark-surface border border-dark-border text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 font-mono">
+          <button onclick="submitManualBlock()" class="px-5 py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-md">
+            <span>🔒</span> Aplicar Aislamiento Firewall
+          </button>
+        </div>
+      </div>
+
       <!-- Tabla de IPs en Cuarentena -->
       <div class="glass-panel rounded-2xl p-5 space-y-4">
         <div class="flex items-center justify-between">
           <h3 class="text-sm font-bold text-white flex items-center gap-2">
-            <span>📋</span> Direcciones IP Hostiles en Cuarentena
+            <span>📋</span> Direcciones Hostiles en Cuarentena Activa
           </h3>
           <span class="text-xs font-mono text-slate-400">TEMPORIZADOR AUTOMÁTICO: 300 SEGUNDOS</span>
         </div>
@@ -517,17 +532,17 @@
             <thead>
               <tr class="bg-dark-surface/90 border-b border-dark-border text-slate-400 font-mono text-[11px] uppercase">
                 <th class="py-3 px-4">Dirección IP</th>
-                <th class="py-3 px-4">Regla Disparadora</th>
+                <th class="py-3 px-4">Motivo / Regla Disparadora</th>
                 <th class="py-3 px-4">Hora de Bloqueo</th>
                 <th class="py-3 px-4">Tiempo Restante</th>
-                <th class="py-3 px-4">Estado Cortafuegos</th>
+                <th class="py-3 px-4">Estado en Firewall</th>
                 <th class="py-3 px-4 text-right">Acción Manual</th>
               </tr>
             </thead>
             <tbody id="firewall-tbody" class="divide-y divide-dark-border font-sans">
               <tr>
                 <td colspan="6" class="text-center py-8 text-slate-500 font-mono text-xs">
-                  Sin IPs en cuarentena actualmente.
+                  Sin IPs en cuarentena actualmente. El perímetro se encuentra despejado.
                 </td>
               </tr>
             </tbody>
@@ -545,11 +560,11 @@
 
       <div class="glass-panel rounded-2xl p-6 border-l-4 border-l-emerald-500">
         <h2 class="text-lg font-bold text-white flex items-center gap-2">
-          <span>🎓</span> Sustentación Técnica: ¿Qué Vulnerabilidades NIST (CVE) Mitiga NetTrap-IPS?
+          <span>🎓</span> Sustentación Técnica: Vulnerabilidades NIST (CVE) Mitigadas por NetTrap-SIEM
         </h2>
-        <div class="mt-3 p-4 rounded-xl bg-dark-surface/70 border border-emerald-500/20 text-xs text-slate-300 leading-relaxed space-y-2">
+        <div class="mt-3 p-4 rounded-xl bg-dark-surface/80 border border-emerald-500/20 text-xs text-slate-300 leading-relaxed space-y-2">
           <p>
-            <strong>Respuesta oficial para el docente:</strong> <em>"NetTrap-IPS centraliza la recolección de eventos desde 3 fuentes reales de Windows (Event Log, Firewall y Red), correlaciona los patrones de agresión en tiempo real y mitiga activamente las siguientes 5 vulnerabilidades críticas catalogadas en el NVD del NIST antes de que la intrusión se consume."</em>
+            <strong>Declaración oficial de arquitectura:</strong> <em>"NetTrap-SIEM centraliza la recolección desde 3 fuentes reales de Windows (Event Log, Firewall y Tráfico de Red), correlaciona agresiones en tiempo real mediante ventanas deslizantes y mitiga activamente las siguientes 5 vulnerabilidades críticas catalogadas en el NVD del NIST antes de que la intrusión se consume."</em>
           </p>
         </div>
       </div>
@@ -561,13 +576,95 @@
 
     </div>
 
+
+    <!-- ═════════════════════════════════════════════════════════════════════
+         PESTAÑA 5: TELEMETRÍA FORENSE & EVENTOS NORMALIZADOS (RF-02)
+         ═════════════════════════════════════════════════════════════════════ -->
+    <div id="tab-telemetry" class="tab-content hidden space-y-6">
+
+      <div class="glass-panel rounded-2xl p-6 border-l-4 border-l-purple-500">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <span>📜</span> Repositorio de Telemetría Normalizada en Tiempo Real (RF-02)
+            </h2>
+            <p class="text-xs text-slate-300 mt-1 max-w-3xl leading-relaxed">
+              Visualización de los eventos procesados en memoria listos para análisis forense, exportación de auditoría y revisión de paquetes binarios <code class="text-purple-400">.pcap</code> compatibles con Wireshark.
+            </p>
+          </div>
+          <button onclick="fetchEventsHistory()" class="px-4 py-2 rounded-xl bg-dark-surface border border-dark-border hover:bg-slate-800 text-xs text-slate-300 font-medium transition-colors flex items-center gap-2 self-start sm:self-auto">
+            <span>🔄</span> Refrescar Telemetría
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabla de Eventos Normalizados -->
+      <div class="glass-panel rounded-2xl p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span>📋</span> Últimos Eventos Normalizados Capturados
+          </h3>
+          <span class="text-xs font-mono text-slate-400" id="telemetry-count-badge">0 eventos en buffer</span>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-dark-border">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-dark-surface/90 border-b border-dark-border text-slate-400 font-mono text-[11px] uppercase">
+                <th class="py-3 px-4">Hora UTC</th>
+                <th class="py-3 px-4">Sensor Windows</th>
+                <th class="py-3 px-4">Severidad</th>
+                <th class="py-3 px-4">IP Remota</th>
+                <th class="py-3 px-4">Puerto</th>
+                <th class="py-3 px-4">Evento</th>
+                <th class="py-3 px-4 text-right">Inspector JSON</th>
+              </tr>
+            </thead>
+            <tbody id="telemetry-tbody" class="divide-y divide-dark-border font-sans">
+              <tr>
+                <td colspan="7" class="text-center py-8 text-slate-500 font-mono text-xs">
+                  Cargando eventos normalizados...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
   </main>
 
-  <!-- Container de Toasts -->
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       MODAL: INSPECTOR JSON FORENSE
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <div id="json-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="glass-panel rounded-2xl max-w-2xl w-full border border-dark-border p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-dark-border pb-3">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2 font-mono">
+          <span>🔍</span> INSPECTOR DE EVENTO NORMALIZADO (RF-02 JSON)
+        </h3>
+        <button onclick="closeJSONModal()" class="text-slate-400 hover:text-white text-lg p-1">✕</button>
+      </div>
+      <div class="relative">
+        <pre id="modal-json-content" class="p-4 rounded-xl bg-[#040711] border border-dark-border text-emerald-400 font-mono text-xs overflow-x-auto max-h-96 custom-scrollbar"></pre>
+        <button onclick="copyModalJSON()" class="absolute top-3 right-3 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-mono border border-slate-700 transition-colors">
+          📋 Copiar
+        </button>
+      </div>
+      <div class="flex justify-end pt-2">
+        <button onclick="closeJSONModal()" class="px-4 py-2 rounded-lg bg-dark-surface border border-dark-border hover:bg-slate-800 text-xs text-white font-medium">
+          Cerrar Inspector
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contenedor de Toasts Flotantes -->
   <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
 
   <!-- ═══════════════════════════════════════════════════════════════════════
-       JAVASCRIPT SOC CLIENT (ZERO TRUST & REAL-TIME)
+       JAVASCRIPT SOC CLIENT (ZERO TRUST & PRODUCTION GRADE)
        ═══════════════════════════════════════════════════════════════════════ -->
   <script>
     'use strict';
@@ -576,8 +673,12 @@
     let wsRetryDelay = 1000;
     let trafficChart = null;
     let alertsCache = [];
+    let telemetryCache = [];
+    let audioAlertsEnabled = false;
+    let audioCtx = null;
     const chartHistory = { labels: [], events: [], alerts: [] };
 
+    // Sanitización HTML estricta contra XSS
     function esc(str) {
       if (str === null || str === undefined) return '';
       return String(str)
@@ -588,9 +689,11 @@
         .replace(/'/g, '&#039;');
     }
 
+    // Navegación entre pestañas
     function switchTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-      document.getElementById(tabId).classList.remove('hidden');
+      const activePanel = document.getElementById(tabId);
+      if (activePanel) activePanel.classList.remove('hidden');
 
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('text-emerald-400', 'bg-emerald-500/15', 'border-emerald-500/30');
@@ -602,18 +705,66 @@
         activeBtn.classList.add('text-emerald-400', 'bg-emerald-500/15', 'border-emerald-500/30');
         activeBtn.classList.remove('text-slate-400');
       }
+
+      if (tabId === 'tab-telemetry') {
+        fetchEventsHistory();
+      }
     }
 
+    // Reloj digital en vivo
     function updateClock() {
-      document.getElementById('clock-local').textContent = new Date().toLocaleTimeString('es-CO');
+      const now = new Date();
+      document.getElementById('clock-local').textContent = now.toLocaleTimeString('es-CO');
     }
     setInterval(updateClock, 1000);
     updateClock();
 
+    // Sistema de Alertas Sonoras (Web Audio API sintético, sin archivos externos)
+    function toggleAudioAlerts() {
+      audioAlertsEnabled = !audioAlertsEnabled;
+      const icon = document.getElementById('audio-icon');
+      if (audioAlertsEnabled) {
+        icon.textContent = '🔊';
+        showToast('Radar Sonoro Activado', 'Emitirá un sonido cibernético sutil ante intrusiones críticas.', 'NORMAL');
+        playRadarChime(880, 0.1);
+      } else {
+        icon.textContent = '🔇';
+        showToast('Radar Sonoro Silenciado', 'Alertas sonoras desactivadas.', 'NORMAL');
+      }
+    }
+
+    function playRadarChime(freq = 750, duration = 0.25) {
+      if (!audioAlertsEnabled) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.5, audioCtx.currentTime + duration);
+
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        // Ignorar si el navegador bloquea audio
+      }
+    }
+
+    // Inicialización del Gráfico Chart.js
     function initChart() {
       const ctx = document.getElementById('trafficChart').getContext('2d');
       const now = new Date();
-      for (let i = 9; i >= 0; i--) {
+      for (let i = 11; i >= 0; i--) {
         const t = new Date(now.getTime() - i * 3000);
         chartHistory.labels.push(t.toLocaleTimeString('es-CO'));
         chartHistory.events.push(0);
@@ -626,20 +777,20 @@
           labels: chartHistory.labels,
           datasets: [
             {
-              label: 'Eventos Windows Normalizados (RF-02)',
+              label: 'Eventos Normalizados Windows (RF-02)',
               data: chartHistory.events,
               borderColor: '#06b6d4',
-              backgroundColor: 'rgba(6, 182, 212, 0.1)',
+              backgroundColor: 'rgba(6, 182, 212, 0.08)',
               borderWidth: 2,
               fill: true,
               tension: 0.35,
               pointRadius: 2,
             },
             {
-              label: 'Alertas Correlacionadas (RF-03/04)',
+              label: 'Amenazas Correlacionadas (RF-03/04)',
               data: chartHistory.alerts,
               borderColor: '#f43f5e',
-              backgroundColor: 'rgba(244, 63, 94, 0.15)',
+              backgroundColor: 'rgba(244, 63, 94, 0.12)',
               borderWidth: 2,
               fill: true,
               tension: 0.35,
@@ -658,12 +809,12 @@
           },
           scales: {
             x: {
-              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              grid: { color: 'rgba(255, 255, 255, 0.04)' },
               ticks: { color: '#64748b', font: { family: '"JetBrains Mono"', size: 9 } }
             },
             y: {
               beginAtZero: true,
-              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              grid: { color: 'rgba(255, 255, 255, 0.04)' },
               ticks: { color: '#64748b', font: { family: '"JetBrains Mono"', size: 9 } }
             }
           }
@@ -714,13 +865,26 @@
       const toast = document.createElement('div');
 
       const isCritical = severity === 'CRITICAL';
-      const borderCol = isCritical ? 'border-rose-500' : 'border-amber-500';
-      const bgCol = isCritical ? 'bg-rose-950/95' : 'bg-amber-950/95';
+      const isWarn = severity === 'HIGH' || severity === 'MEDIUM';
+      
+      let borderCol = 'border-emerald-500';
+      let bgCol = 'bg-slate-900/95';
+      let icon = '🛡️';
+
+      if (isCritical) {
+        borderCol = 'border-rose-500';
+        bgCol = 'bg-rose-950/95';
+        icon = '🚨';
+      } else if (isWarn) {
+        borderCol = 'border-amber-500';
+        bgCol = 'bg-amber-950/95';
+        icon = '⚠️';
+      }
 
       toast.className = `p-4 rounded-xl border ${borderCol} ${bgCol} text-white shadow-2xl backdrop-blur pointer-events-auto transition-all transform duration-300 translate-y-2 opacity-0`;
       toast.innerHTML = `
         <div class="flex items-start gap-3">
-          <span class="text-xl">${isCritical ? '🚨' : '⚠️'}</span>
+          <span class="text-xl">${icon}</span>
           <div class="flex-1">
             <div class="text-xs font-bold font-mono tracking-wide">${esc(title)}</div>
             <div class="text-xs text-slate-200 mt-0.5 leading-snug">${esc(body)}</div>
@@ -736,6 +900,7 @@
       }, 5500);
     }
 
+    // WebSocket en Tiempo Real con Handshake de Token Criptográfico
     function connectWS() {
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
       const token = "{{ token }}";
@@ -755,7 +920,7 @@
         badge.className = 'flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono font-medium';
         badgeText.textContent = 'WS CONECTADO';
         wsRetryDelay = 1000;
-        logToConsole('WEBSOCKET', 'Canal seguro en tiempo real conectado (RF-04).', 'sys');
+        logToConsole('WEBSOCKET', 'Canal seguro de alertas conectado (RF-04).', 'sys');
       };
 
       ws.onmessage = (event) => {
@@ -788,6 +953,7 @@
       renderAlertRow(alert, true);
       updateKPIs();
       pushChartData(alert.count || 4, 1);
+      playRadarChime(800, 0.3);
 
       const sev = alert.severidad || 'CRITICAL';
       const cveStr = (alert.cve_mitigated && alert.cve_mitigated.length) ? alert.cve_mitigated.join(', ') : 'N/A';
@@ -802,7 +968,7 @@
         logToConsole('FIREWALL', `Aislamiento ejecutado para IP ${alert.ip_origen}. Cuarentena 300s.`, 'sys');
       }
 
-      showToast(`[${sev}] Intrusión Correlacionada`, `${alert.ip_origen} ➔ ${alert.rule_name} (${cveStr})`, sev);
+      showToast(`[${sev}] Intrusión Detectada`, `${alert.ip_origen} ➔ ${alert.rule_name} (${cveStr})`, sev);
       refreshStatus();
     }
 
@@ -831,10 +997,10 @@
 
       let pcapBtn = '<span class="text-slate-500 font-mono text-[10px]">No disp.</span>';
       if (alert.pcap_filename) {
-        pcapBtn = `<a href="/api/pcap/${encodeURIComponent(alert.pcap_filename)}" download class="px-2.5 py-1 rounded bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-400 font-mono text-[11px] transition-all inline-flex items-center gap-1"><span>📥</span> .pcap</a>`;
+        pcapBtn = `<a href="/api/pcap/${encodeURIComponent(alert.pcap_filename)}" download class="px-2 py-0.5 rounded bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-400 font-mono text-[10px] transition-all inline-flex items-center gap-1"><span>📥</span> .pcap</a>`;
       } else if (alert.pcap_path) {
         const fname = alert.pcap_path.split(/[\\/]/).pop();
-        pcapBtn = `<a href="/api/pcap/${encodeURIComponent(fname)}" download class="px-2.5 py-1 rounded bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-400 font-mono text-[11px] transition-all inline-flex items-center gap-1"><span>📥</span> .pcap</a>`;
+        pcapBtn = `<a href="/api/pcap/${encodeURIComponent(fname)}" download class="px-2 py-0.5 rounded bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-400 font-mono text-[10px] transition-all inline-flex items-center gap-1"><span>📥</span> .pcap</a>`;
       }
 
       tr.innerHTML = `
@@ -858,20 +1024,24 @@
       document.getElementById('alert-counter-badge').textContent = `${totalAlerts} alertas`;
 
       const defconEl = document.getElementById('kpi-defcon');
+      const defconSub = document.getElementById('kpi-defcon-sub');
       const defconBar = document.getElementById('defcon-bar');
 
       if (totalAlerts === 0) {
         defconEl.textContent = 'NORMAL';
+        defconSub.textContent = 'DEFCON 5';
         defconEl.className = 'text-2xl font-black text-emerald-400 tracking-tight font-mono';
         defconBar.className = 'bg-emerald-500 h-1.5 rounded-full transition-all duration-500';
         defconBar.style.width = '20%';
       } else if (totalAlerts < 4) {
         defconEl.textContent = 'ELEVADO';
+        defconSub.textContent = 'DEFCON 3';
         defconEl.className = 'text-2xl font-black text-amber-400 tracking-tight font-mono';
         defconBar.className = 'bg-amber-500 h-1.5 rounded-full transition-all duration-500';
         defconBar.style.width = '65%';
       } else {
         defconEl.textContent = 'CRÍTICO';
+        defconSub.textContent = 'DEFCON 1';
         defconEl.className = 'text-2xl font-black text-rose-500 tracking-tight font-mono animate-pulse';
         defconBar.className = 'bg-rose-500 h-1.5 rounded-full transition-all duration-500';
         defconBar.style.width = '100%';
@@ -895,9 +1065,20 @@
 
         // Conteo por las 3 fuentes de Windows
         if (data.counts_by_source) {
-          document.getElementById('count-win-event').textContent = `${data.counts_by_source.windows_event_log || 0} ev`;
-          document.getElementById('count-win-fw').textContent = `${data.counts_by_source.windows_firewall || 0} ev`;
-          document.getElementById('count-win-net').textContent = `${data.counts_by_source.network_traffic || 0} ev`;
+          const evC = data.counts_by_source.windows_event_log || 0;
+          const fwC = data.counts_by_source.windows_firewall || 0;
+          const netC = data.counts_by_source.network_traffic || 0;
+
+          document.getElementById('count-win-event').textContent = `${evC} ev`;
+          document.getElementById('count-win-fw').textContent = `${fwC} ev`;
+          document.getElementById('count-win-net').textContent = `${netC} ev`;
+
+          const sEv = document.getElementById('sensor-count-event');
+          const sFw = document.getElementById('sensor-count-fw');
+          const sNet = document.getElementById('sensor-count-net');
+          if (sEv) sEv.textContent = evC;
+          if (sFw) sFw.textContent = fwC;
+          if (sNet) sNet.textContent = netC;
         }
 
         renderFirewallTable(blockedList);
@@ -914,7 +1095,7 @@
         tbody.innerHTML = `
           <tr>
             <td colspan="6" class="text-center py-8 text-slate-500 font-mono text-xs">
-              Sin IPs en cuarentena actualmente.
+              Sin IPs en cuarentena actualmente. El perímetro se encuentra despejado.
             </td>
           </tr>
         `;
@@ -959,9 +1140,39 @@
           logToConsole('FIREWALL', `Regla liberada manualmente para IP ${ip}`, 'sys');
           showToast('IP Liberada', `La dirección ${ip} fue retirada del cortafuegos.`, 'HIGH');
           refreshStatus();
+        } else {
+          showToast('Aviso', `La IP ${ip} ya no se encontraba en cuarentena.`, 'MEDIUM');
+          refreshStatus();
         }
       } catch (e) {
-        alert("Error al desbloquear: " + e);
+        showToast('Error', 'No se pudo conectar con el servicio de firewall: ' + e, 'CRITICAL');
+      }
+    }
+
+    async function submitManualBlock() {
+      const input = document.getElementById('manual-block-ip');
+      const ip = input.value.trim();
+      if (!ip) {
+        alert("Por favor ingrese una dirección IP válida (ej: 198.51.100.22)");
+        return;
+      }
+      try {
+        const res = await fetch('/api/block', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ip })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          input.value = '';
+          logToConsole('FIREWALL', `Aislamiento manual ejecutado para ${ip} en Windows Firewall.`, 'warn');
+          showToast('Aislamiento Aplicado', `IP ${ip} bloqueada preventivamente durante 300s.`, 'HIGH');
+          refreshStatus();
+        } else {
+          showToast('Error', data.detail || data.reason || 'IP no válida.', 'CRITICAL');
+        }
+      } catch (err) {
+        showToast('Error', 'Fallo al comunicar con el cortafuegos: ' + err, 'CRITICAL');
       }
     }
 
@@ -979,7 +1190,7 @@
           tbody.innerHTML = `
             <tr id="empty-alerts-row">
               <td colspan="8" class="text-center py-10 text-slate-500 font-mono text-xs">
-                📡 Sistema en guardia. Ninguna agresión anómala detectada en este momento.
+                📡 Sistema en guardia continua. Ninguna agresión anómala detectada en este momento.
               </td>
             </tr>
           `;
@@ -990,6 +1201,88 @@
       } catch (err) {
         console.warn("Fallo al cargar historial de alertas:", err);
       }
+    }
+
+    async function fetchEventsHistory() {
+      try {
+        const res = await fetch('/api/events?limit=60');
+        if (!res.ok) return;
+        const events = await res.json();
+        telemetryCache = events;
+
+        const tbody = document.getElementById('telemetry-tbody');
+        const badge = document.getElementById('telemetry-count-badge');
+        badge.textContent = `${events.length} eventos en buffer`;
+        tbody.innerHTML = '';
+
+        if (events.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="7" class="text-center py-8 text-slate-500 font-mono text-xs">
+                A la espera de nuevos eventos provenientes de los 3 sensores de Windows.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        events.forEach((ev, idx) => {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-800/40 transition-colors';
+
+          const timeFormatted = ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString('es-CO') : '--:--:--';
+          let sevColor = 'text-slate-400 bg-slate-500/10 border-slate-500/20';
+          if (ev.severidad === 'CRITICAL') sevColor = 'text-rose-400 bg-rose-500/10 border-rose-500/20';
+          else if (ev.severidad === 'HIGH') sevColor = 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+          else if (ev.severidad === 'MEDIUM') sevColor = 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20';
+
+          tr.innerHTML = `
+            <td class="py-3 px-4 font-mono text-slate-400 text-[11px]">${esc(timeFormatted)}</td>
+            <td class="py-3 px-4 font-mono text-slate-300 text-[11px]">${esc(ev.origen)}</td>
+            <td class="py-3 px-4"><span class="px-2 py-0.5 rounded font-mono text-[10px] border ${sevColor}">${esc(ev.severidad)}</span></td>
+            <td class="py-3 px-4 font-mono text-white font-semibold">${esc(ev.ip_origen)}</td>
+            <td class="py-3 px-4 font-mono text-slate-400">${esc(ev.puerto || '0')}</td>
+            <td class="py-3 px-4 text-slate-200 text-xs">${esc(ev.evento)}</td>
+            <td class="py-3 px-4 text-right">
+              <button onclick="inspectEventJSON(${idx})" class="px-2 py-0.5 rounded bg-dark-surface hover:bg-slate-800 border border-dark-border text-cyan-400 font-mono text-[11px] transition-colors">
+                { } JSON
+              </button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.warn("Fallo al cargar telemetría:", err);
+      }
+    }
+
+    function inspectEventJSON(index) {
+      const ev = telemetryCache[index];
+      if (!ev) return;
+      document.getElementById('modal-json-content').textContent = JSON.stringify(ev, null, 2);
+      document.getElementById('json-modal').classList.remove('hidden');
+    }
+
+    function closeJSONModal() {
+      document.getElementById('json-modal').classList.add('hidden');
+    }
+
+    function copyModalJSON() {
+      const text = document.getElementById('modal-json-content').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('Copiado al Portapapeles', 'Estructura JSON lista para análisis forense.', 'NORMAL');
+      });
+    }
+
+    function exportAlertsJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(alertsCache, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `nettrap_audit_${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast('Exportación Exitosa', 'Bitácora descargada en formato JSON.', 'NORMAL');
     }
 
     async function fetchNistCVEs() {
@@ -1011,17 +1304,17 @@
                 <span class="px-2 py-0.5 rounded font-mono font-bold text-[10px] bg-rose-500/15 text-rose-400 border border-rose-500/30">CVSS ${esc(item.cvss)} · ${esc(item.severidad)}</span>
               </div>
               <h3 class="text-sm font-bold text-white mt-3">${esc(item.servicio)}</h3>
-              <div class="text-[11px] text-cyan-400 font-mono mt-0.5">Fuente: ${esc(item.fuente_primaria)}</div>
-              <p class="text-xs text-rose-300 font-medium mt-1">Vector: ${esc(item.vector)}</p>
+              <div class="text-[11px] text-cyan-400 font-mono mt-0.5">Sensor Windows: ${esc(item.fuente_primaria)}</div>
+              <p class="text-xs text-rose-300 font-medium mt-1">Vector de Ataque: ${esc(item.vector)}</p>
 
               <div class="mt-3 p-3 rounded-xl bg-dark-surface/90 border border-dark-border text-xs text-slate-300 space-y-1.5 leading-relaxed">
-                <div><strong class="text-emerald-400 font-mono">Mitigación:</strong> ${esc(item.mitigacion)}</div>
+                <div><strong class="text-emerald-400 font-mono">Mitigación NetTrap:</strong> ${esc(item.mitigacion)}</div>
               </div>
             </div>
 
             <div class="mt-4 pt-3 border-t border-dark-border flex items-center justify-between text-[11px] font-mono text-slate-400">
               <span class="text-emerald-400/90 font-semibold">${esc(item.norma)}</span>
-              <span class="text-slate-500">NVD NIST</span>
+              <span class="text-slate-500">NVD NIST Oficial</span>
             </div>
           `;
           container.appendChild(card);
@@ -1031,83 +1324,11 @@
       }
     }
 
-    async function runSimulation(source, scenario, ip, repeat, port, btnEl) {
-      if (btnEl) {
-        btnEl.disabled = true;
-        btnEl.innerHTML = `<span>⏳</span> Inyectando en ${source}...`;
-      }
-
-      logToConsole('PRUEBA INGESTA', `Generando ${repeat} eventos desde fuente '${source}' (IP: ${ip})...`, 'warn');
-
-      try {
-        const res = await fetch('/api/simulate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ source, scenario, ip_origen: ip, repeat, port })
-        });
-        const data = await res.json();
-        if (data.ok) {
-          logToConsole('SIEM CORRELATOR', `Eventos recibidos y normalizados a JSON (RF-02). Evaluando reglas YAML...`, 'sys');
-        }
-      } catch (err) {
-        logToConsole('ERROR', `Error en la prueba: ${err}`, 'error');
-      }
-
-      setTimeout(() => {
-        if (btnEl) {
-          btnEl.disabled = false;
-          btnEl.innerHTML = `<span>▶</span> Re-ejecutar Prueba`;
-        }
-      }, 1500);
-    }
-
-    function launchCustomTest() {
-      const source = document.getElementById('custom-source').value;
-      const ip = document.getElementById('custom-ip').value.trim() || '192.168.1.150';
-      const repeat = parseInt(document.getElementById('custom-repeat').value) || 6;
-      runSimulation(source, 'Inyección de Laboratorio', ip, repeat, 445);
-    }
-
-    async function triggerMassiveSimulation(btn) {
-      btn.disabled = true;
-      btn.innerHTML = `<span>⏳</span> Inyectando en las 3 Fuentes Reales...`;
-
-      logToConsole('DEMO DOCENTE', 'INICIANDO INGESTA SIMULTÁNEA EN LAS 3 FUENTES DE WINDOWS (RF-01)', 'error');
-
-      const tests = [
-        { source: 'windows_event_log', scenario: 'Fuerza Bruta Login Windows', ip: '198.51.100.22', repeat: 5, port: 445 },
-        { source: 'windows_firewall', scenario: 'Violación Políticas Cortafuegos', ip: '185.220.101.42', repeat: 4, port: 21 },
-        { source: 'network_traffic', scenario: 'Ráfaga SYN Nmap Recon', ip: '45.33.32.156', repeat: 8, port: 8000 }
-      ];
-
-      for (const t of tests) {
-        await runSimulation(t.source, t.scenario, t.ip, t.repeat, t.port);
-        await new Promise(r => setTimeout(r, 250));
-      }
-
-      setTimeout(() => {
-        btn.disabled = false;
-        btn.innerHTML = `<span>💥</span> DISPARAR PRUEBA MULTIFUENTE COMPLETA`;
-      }, 2500);
-    }
-
     function filterAlertsTable() {
       const q = document.getElementById('filter-ip').value.toLowerCase();
       document.querySelectorAll('.alert-row').forEach(row => {
         row.style.display = row.innerText.toLowerCase().includes(q) ? '' : 'none';
       });
-    }
-
-    function clearAlertsView() {
-      alertsCache = [];
-      document.getElementById('alerts-tbody').innerHTML = `
-        <tr id="empty-alerts-row">
-          <td colspan="8" class="text-center py-10 text-slate-500 font-mono text-xs">
-            Vista limpiada por el operador. Nuevas alertas aparecerán en tiempo real.
-          </td>
-        </tr>
-      `;
-      updateKPIs();
     }
 
     window.addEventListener('DOMContentLoaded', () => {

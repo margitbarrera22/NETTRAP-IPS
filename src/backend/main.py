@@ -361,6 +361,25 @@ async def api_status(session=Depends(require_auth)):
     })
 
 
+@app.post("/api/block")
+async def api_block(request: Request, session=Depends(require_auth)):
+    """Aislamiento preventivo manual de una dirección IP (ISO/IEC 27033-4 Cl. 9.2)."""
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Cuerpo JSON inválido")
+
+    raw_ip = str(body.get("ip", "")).strip()
+    valid = validate_ip(raw_ip)
+    if not valid:
+        raise HTTPException(status_code=400, detail="Dirección IP inválida (OWASP ASVS V5.1.1)")
+
+    from mitigator import block_ip
+    result = block_ip(valid, rule_id="MANUAL_SOC_BLOCK")
+    _audit_auth(f"MANUAL_BLOCK:{valid}", session["user"], "dashboard")
+    return JSONResponse(result)
+
+
 @app.post("/api/unblock/{ip}")
 async def api_unblock(ip: str, session=Depends(require_auth)):
     """Liberación controlada de una IP en cuarentena."""
