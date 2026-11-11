@@ -60,8 +60,8 @@ rules:
     description: "≥4 solicitudes anómalas repetidas en 60 s hacia puertos de aplicación"
     threshold: 4
     window_seconds: 60
-    severity: "MEDIUM"
-    action: "alert_only"
+    severity: "CRITICAL"
+    action: "block_and_capture"
     cve_mitigated:
       - "CVE-2021-44228"   # Log4Shell JNDI injection probing
 
@@ -70,6 +70,7 @@ whitelist:
   # IPs críticas protegidas contra auto-bloqueo
   - "127.0.0.1"
   - "::1"
+  - "192.168.88.234"
   - "192.168.1.1"
   - "8.8.8.8"
   - "8.8.4.4"

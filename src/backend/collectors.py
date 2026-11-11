@@ -230,7 +230,7 @@ class NetworkTrafficCollector(threading.Thread):
     para detectar ráfagas de reconocimiento y conexiones anómalas.
     """
 
-    def __init__(self, interval_seconds: float = 3.0):
+    def __init__(self, interval_seconds: float = 1.0):
         super().__init__(daemon=True, name="Collector-NetTraffic")
         self.interval = interval_seconds
         self._stop_evt = threading.Event()
@@ -264,8 +264,8 @@ class NetworkTrafficCollector(threading.Thread):
                     foreign_addr = parts[2]
                     state = parts[3]
 
-                    # Filtrar conexiones entrantes relevantes
-                    if state in ("ESTABLISHED", "SYN_RECEIVED", "TIME_WAIT"):
+                    # Filtrar conexiones entrantes relevantes (cualquier estado de negociación o cierre)
+                    if state in ("ESTABLISHED", "SYN_RECEIVED", "TIME_WAIT", "CLOSE_WAIT", "FIN_WAIT_1", "FIN_WAIT_2"):
                         if ":" in foreign_addr:
                             remote_ip = foreign_addr.rsplit(":", 1)[0]
                             local_port = local_addr.rsplit(":", 1)[1] if ":" in local_addr else "0"
@@ -274,7 +274,7 @@ class NetworkTrafficCollector(threading.Thread):
 
                             if conn_key not in self._seen_connections:
                                 valid = validate_ip(remote_ip)
-                                if valid and valid not in ("127.0.0.1", "::1"):
+                                if valid and valid not in ("127.0.0.1", "::1", "192.168.88.234"):
                                     normalize_event(
                                         origen="network_traffic",
                                         severidad="MEDIUM" if state == "ESTABLISHED" else "HIGH",

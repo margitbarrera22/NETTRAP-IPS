@@ -48,6 +48,12 @@ REM ── Crear directorios de datos ──────────────
 if not exist "src\data\logs" mkdir "src\data\logs"
 if not exist "src\data\pcap" mkdir "src\data\pcap"
 
+REM ── Habilitar puerto 8000 y logging en Windows Defender Firewall ───────────
+echo [*] Configurando Windows Defender Firewall para recibir trafico de la red...
+netsh advfirewall firewall delete rule name="NetTrap-Inbound-SOC" >nul 2>&1
+netsh advfirewall firewall add rule name="NetTrap-Inbound-SOC" dir=in action=allow protocol=TCP localport=8000,8080 enable=yes >nul 2>&1
+netsh advfirewall set allprofiles logging droppedconnections enable >nul 2>&1
+
 echo [*] MODO: ESCUCHA ACTIVA EN TODA LA RED LOCAL (HOST = 0.0.0.0)
 echo [*] Tu IP local para recibir ataques: %LOCAL_IP%
 echo.

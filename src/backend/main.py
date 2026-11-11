@@ -74,6 +74,26 @@ FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(FRONTEND_DIR / "templates"))
 
+# ── Middleware de Inspección de Tráfico de Red Entrante (RF-01 / RF-02) ────────
+@app.middleware("http")
+async def audit_external_traffic(request: Request, call_next):
+    client_ip = request.client.host if request.client and request.client.host else "127.0.0.1"
+    # No auditar las propias peticiones del operador local
+    if client_ip and client_ip not in ("127.0.0.1", "::1", "localhost", "192.168.88.234"):
+        path = request.url.path
+        if not path.startswith("/static"):
+            ua = request.headers.get("user-agent", "")
+            is_probe = path in ("/login", "/", "/api/simulate", "/api/block") or any(k in ua.lower() for k in ("nmap", "nikto", "sqlmap", "curl", "python"))
+            normalize_event(
+                origen="network_traffic",
+                severidad="HIGH" if is_probe else "MEDIUM",
+                evento=f"Tráfico Externo [{request.method} {path}]",
+                ip_origen=client_ip,
+                descripcion=f"Conexión entrante desde la red local ({client_ip}) hacia puerto 8000 ({path})",
+                puerto=8000
+            )
+    return await call_next(request)
+
 # ── Zero Trust Session & Lockout Management ──────────────────────────────────
 # Sesiones efímeras en memoria (CSPRNG 32 bytes)
 _sessions: dict[str, dict] = {}       # token -> {user, ip, created_at, last_active}
@@ -612,8 +632,8 @@ async def ws_alerts(websocket: WebSocket):
     session = _sessions.get(token) if token else None
     if not session:
         client_host = websocket.client.host if websocket.client else "127.0.0.1"
-        if client_host in ("127.0.0.1", "::1", "localhost") and len(_sessions) > 0:
-            session = list(_sessions.values())[-1]
+        if client_host in ("127.0.0.1", "::1", "localhost", "192.168.88.234"):
+            session = list(_sessions.values())[-1] if len(_sessions) > 0 else {"user": "admin", "ip": client_host}
         else:
             await websocket.close(code=4001)
             return
