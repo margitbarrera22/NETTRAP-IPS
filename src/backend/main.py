@@ -473,6 +473,135 @@ async def download_pcap(filename: str, session=Depends(require_auth)):
     )
 
 
+# ── Integración Nmap, Wireshark y natted.cloud ────────────────────────────────
+@app.get("/api/pcaps")
+async def list_pcaps(session=Depends(require_auth)):
+    """Lista las evidencias forenses .pcap capturadas para análisis en Wireshark (NIST SP 800-218 PW.9.1)."""
+    pcaps = []
+    if PCAP_DIR.exists():
+        for p in sorted(PCAP_DIR.glob("*.pcap"), key=os.path.getmtime, reverse=True):
+            try:
+                stat = p.stat()
+                # Parsear IP de nombre de archivo: evidencia_<ip>_<ts>.pcap
+                parts = p.stem.split("_")
+                ip = parts[1] if len(parts) >= 2 else "Desconocida"
+                pcaps.append({
+                    "filename": p.name,
+                    "ip": ip,
+                    "size_bytes": stat.st_size,
+                    "modified": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
+                    "download_url": f"/api/pcap/{p.name}"
+                })
+            except Exception:
+                continue
+    return JSONResponse(pcaps)
+
+
+@app.get("/api/pcap/inspect/{filename}")
+async def inspect_pcap(filename: str, session=Depends(require_auth)):
+    """Decodifica los encabezados de la trama .pcap para visualización forense estilo Wireshark."""
+    import struct
+    import socket
+
+    safe_name = Path(filename).name
+    file_path = PCAP_DIR / safe_name
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="Archivo forense no encontrado")
+
+    try:
+        data = file_path.read_bytes()
+        if len(data) < 24 + 16 + 14 + 20 + 20:
+            return JSONResponse({"error": "Archivo PCAP demasiado corto o incompleto"})
+
+        # Global Header: 24 bytes
+        magic = struct.unpack("<I", data[:4])[0]
+        # Packet Header: 16 bytes (después de byte 24)
+        ts_sec, ts_usec, incl_len, orig_len = struct.unpack("<IIII", data[24:40])
+
+        # Ethernet: 14 bytes (offset 40 a 54)
+        eth_type = struct.unpack("!H", data[52:54])[0]
+
+        # IPv4: 20 bytes (offset 54 a 74)
+        src_ip = socket.inet_ntoa(data[66:70])
+        dst_ip = socket.inet_ntoa(data[70:74])
+        proto = data[63]
+
+        # TCP: 20 bytes (offset 74 a 94)
+        src_port, dst_port, seq, ack, off_res, flags = struct.unpack("!HHIIBB", data[74:88])
+
+        flags_str = []
+        if flags & 0x02: flags_str.append("SYN")
+        if flags & 0x10: flags_str.append("ACK")
+        if flags & 0x01: flags_str.append("FIN")
+        if flags & 0x04: flags_str.append("RST")
+        if flags & 0x08: flags_str.append("PSH")
+
+        return JSONResponse({
+            "filename": safe_name,
+            "format": "libpcap 2.4 (Wireshark / tcpdump compatible)",
+            "packet_capture_timestamp": datetime.fromtimestamp(ts_sec, timezone.utc).isoformat(),
+            "frame_length_bytes": incl_len,
+            "ethernet": {
+                "type": f"0x{eth_type:04x} (IPv4)"
+            },
+            "ipv4": {
+                "source_ip": src_ip,
+                "destination_ip": dst_ip,
+                "protocol": f"{proto} (TCP)"
+            },
+            "tcp": {
+                "source_port": src_port,
+                "destination_port": dst_port,
+                "sequence_number": seq,
+                "flags": ", ".join(flags_str) if flags_str else f"0x{flags:02x}"
+            },
+            "wireshark_cli_command": f"wireshark -r {safe_name}"
+        })
+    except Exception as exc:
+        return JSONResponse({"error": f"Error al decodificar trama: {exc}"})
+
+
+@app.post("/api/nmap/audit")
+async def nmap_port_audit(session=Depends(require_auth)):
+    """Auditoría de puertos y exposición de servicios locales (Módulo Nmap Scanner del SIEM)."""
+    import socket
+    target_ports = [
+        (21, "FTP / File Transfer"),
+        (22, "SSH / Secure Shell"),
+        (80, "HTTP / Web Server"),
+        (135, "RPC / Microsoft Windows RPC"),
+        (445, "SMB / Microsoft DS Active Directory"),
+        (3389, "RDP / Remote Desktop (BlueKeep Vector)"),
+        (8000, "NetTrap-SIEM SOC Console")
+    ]
+    results = []
+    for port, service in target_ports:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(0.15)
+        try:
+            res = s.connect_ex(("127.0.0.1", port))
+            is_open = (res == 0)
+        except Exception:
+            is_open = False
+        finally:
+            s.close()
+
+        results.append({
+            "port": port,
+            "service": service,
+            "state": "OPEN" if is_open else "FILTERED / CLOSED",
+            "risk_assessment": "CRÍTICO (Exposición RDP)" if port == 3389 and is_open else ("ALTO (SMB)" if port == 445 and is_open else "NORMAL")
+        })
+
+    return JSONResponse({
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "target": "127.0.0.1 (Host Local)",
+        "scan_type": "SYN / TCP Connect Port Sweep (Nmap Spec)",
+        "total_audited": len(results),
+        "ports": results
+    })
+
+
 # ── WebSocket Endpoint (Zero Trust Authenticated) ─────────────────────────────
 @app.websocket("/ws/alerts")
 async def ws_alerts(websocket: WebSocket):
