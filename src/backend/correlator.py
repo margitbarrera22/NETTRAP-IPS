@@ -1,20 +1,11 @@
 """
-NetTrap-IPS · Motor de Correlación y Análisis
-Componente 2 de 5 — Clase 2/5
-
-Consume eventos de la cola del Honeypot, aplica reglas YAML configurables,
-detecta patrones de escaneo y dispara la mitigación si se supera el umbral.
+NetTrap-IPS · Motor de Correlación y Análisis SIEM/IPS (RF-03)
+Evalúa eventos entrantes de las 3 fuentes reales de Windows contra reglas YAML.
 
 Normas:
-  - ISO/IEC 27033-4 Cl. 9.2   → política default-deny / aislamiento
-  - OWASP ASVS V5.1.1          → validación estricta de entradas (IP ya validada)
-  - NIST SP 800-218 PW.9.1     → trazabilidad de alertas
-
-CVEs mitigados por las reglas de este motor:
-  RULE-001 → CVE-2024-37032, CVE-2019-0708
-  RULE-002 → CVE-2015-3306
-  RULE-003 → CVE-2023-38408
-  RULE-004 → CVE-2021-44228
+  - ISO/IEC 27033-4 Cl. 9.2   → Política default-deny / Aislamiento preventivo
+  - OWASP ASVS v5.0 V5.1.1     → Validación estricta de entradas
+  - NIST SP 800-218 PW.9.1     → Registro forense trazable
 """
 
 import yaml
@@ -28,185 +19,174 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from config import RULES_FILE, LOG_DIR, QUEUE_MAX_SIZE
-from honeypot import event_queue
+from collectors import event_queue
 
 logger = logging.getLogger("nettrap.correlator")
 
-# Cola de ALERTAS → consumida por el backend FastAPI para WebSocket
+# Cola de ALERTAS → consumida por AlertDispatcher para bloqueo y WebSocket
 alert_queue: queue.Queue = queue.Queue(maxsize=500)
 
-# Buffer circular en memoria con las últimas 150 alertas para carga instantánea al refrescar
-recent_alerts_history: deque = deque(maxlen=150)
-recent_events_history: deque = deque(maxlen=150)
+# Buffer circular persistente en memoria para las últimas alertas y eventos (RF-05)
+recent_alerts_history: deque = deque(maxlen=200)
+recent_events_history: deque = deque(maxlen=200)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Carga de reglas YAML — validadas con esquema básico
-# ─────────────────────────────────────────────────────────────────────────────
-def load_rules(path: Path = RULES_FILE) -> tuple[list[dict], list[str], list[dict]]:
-    """
-    Carga detection_rules.yaml y devuelve (rules, whitelist, honeypot_ports).
-    Valida que cada regla tenga los campos requeridos.
-    """
-    with open(path, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
+def load_rules(path: Path = RULES_FILE) -> tuple[list[dict], list[str]]:
+    """Carga y valida las reglas desde el archivo YAML."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+    except Exception as exc:
+        logger.error("Error al cargar reglas YAML: %s", exc)
+        return [], []
 
     required_keys = {"id", "name", "threshold", "window_seconds", "severity", "action"}
     rules = []
     for rule in data.get("rules", []):
-        missing = required_keys - rule.keys()
-        if missing:
-            logger.warning("Regla incompleta ignorada (faltan %s): %s", missing, rule.get("id"))
+        if not required_keys.issubset(rule.keys()):
+            logger.warning("Regla descartada por faltar campos requeridos: %s", rule.get("id"))
             continue
         rules.append(rule)
 
     whitelist = data.get("whitelist", [])
-    ports     = data.get("honeypot_ports", [])
-
-    logger.info("Reglas cargadas: %d | IPs en whitelist: %d", len(rules), len(whitelist))
-    return rules, whitelist, ports
+    logger.info("Reglas SIEM activas: %d | Whitelist protegida: %d", len(rules), len(whitelist))
+    return rules, whitelist
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Ventana deslizante por IP/regla
-# ─────────────────────────────────────────────────────────────────────────────
 class SlidingWindowCounter:
-    """
-    Cuenta eventos de una IP dentro de una ventana temporal deslizante.
-    Thread-safe mediante RLock.
-    """
+    """Mantiene contadores de eventos por IP y Regla dentro de una ventana temporal deslizante."""
 
     def __init__(self):
-        self._lock   = threading.RLock()
-        # {rule_id: {ip: deque([timestamp, ...])}}
+        self._lock = threading.RLock()
         self._windows: dict[str, dict[str, deque]] = defaultdict(lambda: defaultdict(deque))
 
-    def add(self, rule_id: str, ip: str, now: float) -> int:
-        """Registra el evento y devuelve cuántos eventos hay en la ventana."""
+    def add_and_count(self, rule_id: str, ip: str, window_seconds: float, now: float) -> int:
         with self._lock:
             dq = self._windows[rule_id][ip]
             dq.append(now)
-            return len(dq)
-
-    def prune(self, rule_id: str, ip: str, window: float, now: float) -> int:
-        """Elimina eventos fuera de la ventana y devuelve el conteo actualizado."""
-        with self._lock:
-            dq = self._windows[rule_id][ip]
-            while dq and (now - dq[0]) > window:
+            while dq and (now - dq[0]) > window_seconds:
                 dq.popleft()
             return len(dq)
 
+    def reset_for_ip(self, ip: str) -> None:
+        with self._lock:
+            for rule_id in self._windows:
+                if ip in self._windows[rule_id]:
+                    self._windows[rule_id][ip].clear()
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Motor principal
-# ─────────────────────────────────────────────────────────────────────────────
+
 class CorrelationEngine(threading.Thread):
     """
-    Hilo principal del motor de correlación.
-    Lee eventos de event_queue, aplica reglas y emite alertas a alert_queue.
-    También registra en el log de auditoría (append-only).
+    Motor central de análisis y correlación en tiempo real.
+    Consume la cola de eventos normalizados, aplica las reglas activas
+    y despacha alertas de seguridad ante umbrales cumplidos.
     """
 
     def __init__(self):
         super().__init__(daemon=True, name="CorrelationEngine")
-        self.rules, self.whitelist, _ = load_rules()
-        self._counter  = SlidingWindowCounter()
+        self.rules, self.whitelist = load_rules()
+        self._counter = SlidingWindowCounter()
         self._stop_evt = threading.Event()
         self._audit_path = LOG_DIR / "audit.jsonl"
 
-    # ── Logging de auditoría append-only (OWASP ASVS V8.1.1) ─────────────────
     def _audit(self, record: dict) -> None:
+        """Almacena auditoría en modo append-only (OWASP ASVS V8.1.1)."""
         try:
             with open(self._audit_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(record, ensure_ascii=False) + "\n")
         except Exception as exc:
-            # OWASP ASVS V7.4.1 — nunca detiene el motor por error de log
-            logger.error("Error al escribir auditoría: %s", exc)
+            logger.error("Fallo al escribir en audit.jsonl: %s", exc)
 
-    # ── Lógica principal ──────────────────────────────────────────────────────
     def run(self) -> None:
-        logger.info("Motor de correlación iniciado")
+        logger.info("Motor de Correlación SIEM/IPS iniciado exitosamente.")
         while not self._stop_evt.is_set():
             try:
-                event = event_queue.get(timeout=0.5)
-                self._process(event)
+                event = event_queue.get(timeout=0.4)
+                self._process_event(event)
             except queue.Empty:
                 continue
             except Exception as exc:
-                logger.error("Error inesperado en motor: %s", exc)
+                logger.error("Error inesperado en motor de correlación: %s", exc)
 
-    def _process(self, event: dict) -> None:
-        ip  = event.get("ip_origen", "")
+    def _process_event(self, event: dict) -> None:
+        ip = event.get("ip_origen", "")
         now = time.time()
         is_simulation = event.get("is_simulation", False)
+        event_source = event.get("origen", "")
 
-        # Registrar en historial de telemetría de eventos crudos
+        # Registrar en telemetría de eventos crudos en vivo
         recent_events_history.append(event)
 
-        # 1. Whitelist check → mitiga IP Spoofing (ISO 27033-4 Cl. 9.2)
-        # En modo simulación/demo deliberada se permite la correlación
+        # 1. Whitelist anti-spoofing (ISO/IEC 27033-4 Cl. 9.2)
         if ip in self.whitelist and not is_simulation:
-            logger.debug("IP %s en whitelist — ignorada", ip)
+            logger.debug("IP %s en lista blanca — exenta de aislamiento", ip)
             return
 
-        matched_rules = []
+        matched_alerts = []
 
         for rule in self.rules:
-            rid      = rule["id"]
-            window   = float(rule["window_seconds"])
-            threshold = int(rule["threshold"])
+            rid = rule["id"]
+            rule_source = rule.get("source", "")
+            window = float(rule.get("window_seconds", 60))
+            threshold = int(rule.get("threshold", 5))
 
-            # Añadir y limpiar ventana
-            self._counter.add(rid, ip, now)
-            count = self._counter.prune(rid, ip, window, now)
+            # Verificar coincidencia de fuente o aplicar correlación general
+            source_matches = (
+                not rule_source or 
+                rule_source == event_source or
+                is_simulation
+            )
+
+            if not source_matches:
+                continue
+
+            count = self._counter.add_and_count(rid, ip, window, now)
 
             if count >= threshold:
-                matched_rules.append((rule, count))
+                matched_alerts.append((rule, count))
 
-        if not matched_rules:
+        if not matched_alerts:
             return
 
-        # Tomar la regla de mayor severidad
-        sev_order = {"CRITICAL": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1}
-        best_rule, count = max(
-            matched_rules,
-            key=lambda x: sev_order.get(x[0]["severity"], 0)
-        )
+        # Priorizar la regla de mayor severidad
+        sev_rank = {"CRITICAL": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1}
+        best_rule, count = max(matched_alerts, key=lambda x: sev_rank.get(x[0].get("severity", "LOW"), 0))
 
         alert = {
-            "timestamp":   datetime.now(timezone.utc).isoformat(),
-            "type":        "ALERT",
-            "rule_id":     best_rule["id"],
-            "rule_name":   best_rule["name"],
-            "ip_origen":   ip,
-            "puerto":      event.get("puerto"),
-            "label":       event.get("label"),
-            "severidad":   best_rule["severity"],
-            "accion":      best_rule["action"],
-            "count":       count,
-            "threshold":   best_rule["threshold"],
+            "timestamp":     datetime.now(timezone.utc).isoformat(),
+            "type":          "ALERT",
+            "rule_id":       best_rule["id"],
+            "rule_name":     best_rule["name"],
+            "origen":        event_source,
+            "ip_origen":     ip,
+            "puerto":        event.get("puerto", 0),
+            "severidad":     best_rule["severity"],
+            "accion":        best_rule["action"],
+            "count":         count,
+            "threshold":     best_rule["threshold"],
             "cve_mitigated": best_rule.get("cve_mitigated", []),
             "descripcion": (
-                f"[{best_rule['id']}] {ip} activó {count}/{best_rule['threshold']} "
-                f"eventos en {best_rule['window_seconds']}s — {best_rule['name']}"
-            ),
+                f"[{best_rule['id']}] {ip} activó {count}/{best_rule['threshold']} eventos en "
+                f"{best_rule['window_seconds']}s mediante {event_source} — {best_rule['name']}"
+            )
         }
 
-        logger.warning("ALERTA GENERADA: %s", alert)
+        logger.warning("🚨 [ALERTA CORRELACIONADA] %s", alert["descripcion"])
         self._audit(alert)
         recent_alerts_history.append(alert)
 
-        # Encolar alerta para WebSocket (sin bloquear)
+        # Reiniciar contador de esta IP para evitar disparos en cascada continuos
+        self._counter.reset_for_ip(ip)
+
+        # Encolar para despacho hacia firewall y WebSockets
         try:
             alert_queue.put_nowait(alert)
         except queue.Full:
-            logger.error("Cola de alertas llena")
+            logger.error("Cola de alertas saturada")
 
     def stop(self) -> None:
         self._stop_evt.set()
 
     def reload_rules(self) -> None:
-        """Recarga reglas en caliente sin reiniciar el hilo."""
-        self.rules, self.whitelist, _ = load_rules()
-        logger.info("Reglas recargadas en caliente")
-
+        self.rules, self.whitelist = load_rules()
+        logger.info("Reglas SIEM recargadas dinámicamente")

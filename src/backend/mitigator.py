@@ -187,7 +187,7 @@ def block_ip(ip: str, rule_id: str = "NETTRAP") -> dict:
     details = "Aislamiento activo en NetTrap-IPS"
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=5, check=False)
+        result = subprocess.run(cmd, capture_output=True, timeout=5, check=False)
         if result.returncode == 0:
             firewall_applied = True
             details = "Regla aplicada exitosamente en Windows Defender Firewall"

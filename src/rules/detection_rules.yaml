@@ -1,66 +1,75 @@
 ---
-# NetTrap-IPS · Reglas de Correlación (YAML)
-# Formato: nombre, umbral, ventana_seg, severidad, accion
-# Referencia normativa: OWASP ASVS V5.1.1 / NIST SP 800-218 PW.9.1
+# NetTrap-IPS · Reglas de Correlación SIEM/IPS (YAML)
+# Formato: id, nombre, fuente, umbral, ventana_seg, severidad, accion, cve_mitigated
+# Normas: OWASP ASVS V5.1.1 / NIST SP 800-218 PW.9.1 / ISO 27033-1 Cl. 10.3
+
+sources:
+  - id: "windows_event_log"
+    name: "Windows Event Log"
+    channels: ["Security", "System"]
+    event_ids: [4625, 4624, 4672, 7045]
+    description: "Eventos nativos del sistema operativo (fallos de autenticación, escalada de privilegios)"
+  
+  - id: "windows_firewall"
+    name: "Windows Defender Firewall"
+    log_path: "C:\\Windows\\System32\\LogFiles\\Firewall\\pfirewall.log"
+    description: "Logs de tráfico bloqueado (DROP) y paquetes rechazados por directivas de firewall"
+  
+  - id: "network_traffic"
+    name: "Tráfico de Red y Conexiones Activas"
+    description: "Telemetría de sockets TCP/UDP entrantes, ráfagas SYN y sondeos de red"
 
 rules:
   - id: RULE-001
-    name: "Port Scan rapido (Nmap SYN)"
-    description: "Detecta reconocimiento: ≥5 toques en puertos trampa distintos en 60 s"
+    name: "Fuerza Bruta de Autenticación Windows (EventID 4625)"
+    source: "windows_event_log"
+    description: "≥5 intentos fallidos de inicio de sesión desde la misma IP en 60 s"
     threshold: 5
     window_seconds: 60
     severity: "CRITICAL"
     action: "block_and_capture"
     cve_mitigated:
-      - "CVE-2024-37032"   # Enumeración de servicios / reconocimiento previo
-      - "CVE-2019-0708"    # BlueKeep – explotable tras reconocimiento de puerto 3389
+      - "CVE-2019-0708"    # BlueKeep / Fuerza bruta de acceso RDP
+      - "CVE-2023-38408"   # Intento de autenticación hostil en servicios remotos
 
   - id: RULE-002
-    name: "Brute-force repetido sobre trampa FTP (puerto 21)"
-    description: "≥3 conexiones al puerto 21 señuelo en 30 s = intento de fuerza bruta"
-    threshold: 3
+    name: "Escaneo Rápido de Reconocimiento de Red (Nmap SYN Scan)"
+    source: "network_traffic"
+    description: "≥8 conexiones entrantes rápidas desde la misma IP en 30 s hacia puertos del sistema"
+    threshold: 8
     window_seconds: 30
-    severity: "HIGH"
+    severity: "CRITICAL"
     action: "block_and_capture"
     cve_mitigated:
-      - "CVE-2015-3306"    # ProFTPd – ejecución remota de código tras brute-force
+      - "CVE-2024-37032"   # Reconocimiento previo y enumeración de APIs locales
 
   - id: RULE-003
-    name: "Acceso SSH no autorizado (puerto trampa 2222)"
-    description: "≥2 intentos de conexión al puerto SSH señuelo en 60 s"
-    threshold: 2
+    name: "Violación Reiterada de Políticas en Windows Firewall"
+    source: "windows_firewall"
+    description: "≥4 paquetes bloqueados (DROP) por el firewall desde la misma IP en 60 s"
+    threshold: 4
     window_seconds: 60
     severity: "HIGH"
     action: "block_and_capture"
     cve_mitigated:
-      - "CVE-2023-38408"   # OpenSSH ssh-agent RCE
+      - "CVE-2015-3306"    # Intento de evasión de cortafuegos y acceso a servicios no autorizados
 
   - id: RULE-004
-    name: "Sondeo HTTP no autorizado (puerto trampa 8080)"
-    description: "≥4 conexiones al puerto 8080 señuelo en 60 s"
+    name: "Sondeo Anómalo de Servicios Web (Log4Shell / HTTP Probing)"
+    source: "network_traffic"
+    description: "≥4 solicitudes anómalas repetidas en 60 s hacia puertos de aplicación"
     threshold: 4
     window_seconds: 60
     severity: "MEDIUM"
     action: "alert_only"
     cve_mitigated:
-      - "CVE-2021-44228"   # Log4Shell – explotable via HTTP headers no saneados
+      - "CVE-2021-44228"   # Log4Shell JNDI injection probing
 
 whitelist:
-  # IPs que NUNCA se bloquean (Gateway, DNS, localhost)
-  # Mitiga: Spoofing → ISO 27033-4 Cl. 9.2
+  # Lista blanca anti-spoofing (ISO/IEC 27033-4 Cl. 9.2)
+  # IPs críticas protegidas contra auto-bloqueo
   - "127.0.0.1"
   - "::1"
   - "192.168.1.1"
   - "8.8.8.8"
   - "8.8.4.4"
-
-honeypot_ports:
-  - port: 21
-    label: "FTP-Trap"
-  - port: 2222
-    label: "SSH-Trap"
-  - port: 8080
-    label: "HTTP-Trap"
-  - port: 3389
-    label: "RDP-Trap"
-
