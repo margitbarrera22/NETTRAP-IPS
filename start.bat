@@ -1,48 +1,44 @@
 @echo off
-REM NetTrap-IPS · Script de arranque (Windows)
-REM Equipo CyberDefender — Clase 2/5
-REM
-REM USO: ejecutar como ADMINISTRADOR (necesario para netsh y puertos <1024)
-REM
-REM NOTA: No es PowerShell. Es CMD puro.
+REM NetTrap-SIEM / IPS · Script de arranque (Windows CMD)
+REM Equipo CyberDefender (UNIPAZ)
+REM USO: Clic derecho -> "Ejecutar como administrador"
 
 echo.
-echo  ==============================================
-echo   NetTrap-IPS · CyberDefender
-echo   Motor IPS con Honeypots y Dashboard Web
-echo  ==============================================
+echo  ==============================================================
+echo   NetTrap-SIEM / IPS  Enterprise SOC v3.2 (UNIPAZ)
+echo   CyberDefender: Margit Barrera, Michel Bayona, Said Pacheco
+echo  ==============================================================
 echo.
 
-REM ── Verificar Python ─────────────────────────────────────────────────────
+REM ── Detectar Python 3 ────────────────────────────────────────────────────────
+set "PY_BIN=python"
 where python >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] Python no encontrado. Instala Python 3.11+ desde https://python.org
-    pause
-    exit /b 1
+    if exist "%LOCALAPPDATA%\Programs\Python\Python312\python.exe" (
+        set "PY_BIN=%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
+    ) else if exist "C:\Python312\python.exe" (
+        set "PY_BIN=C:\Python312\python.exe"
+    ) else (
+        echo [ERROR] No se encontro Python 3.12 en el sistema.
+        pause
+        exit /b 1
+    )
 )
 
-REM ── Instalar dependencias si no existen ──────────────────────────────────
-echo [*] Verificando dependencias...
-pip install -r requirements.txt --quiet --disable-pip-version-check
-if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] Fallo al instalar dependencias.
-    pause
-    exit /b 1
-)
+REM ── Crear directorios de datos ───────────────────────────────────────────────
+if not exist "src\data\logs" mkdir "src\data\logs"
+if not exist "src\data\pcap" mkdir "src\data\pcap"
 
-REM ── Crear directorios de datos ───────────────────────────────────────────
-if not exist "src\data\logs"  mkdir "src\data\logs"
-if not exist "src\data\pcap"  mkdir "src\data\pcap"
-
+echo [*] Iniciando NetTrap-SIEM Engine...
+echo [*] Conectando 3 Sensores Nativos de Windows (EventLog, Firewall, Red)...
+echo [*] Dashboard SOC Web: http://127.0.0.1:8000
+echo [*] Credenciales: Usuario: admin  ^|  Clave: nettrap2026
 echo.
-echo [*] Iniciando NetTrap-IPS...
-echo [*] Dashboard disponible en: http://127.0.0.1:8000
-echo [*] Usuario: admin  |  Contraseña: nettrap2026
-echo [*] Presiona Ctrl+C para detener.
+echo Presiona Ctrl+C en esta ventana para detener el servidor.
+echo ==============================================================
 echo.
 
 cd src\backend
-python main.py
+"%PY_BIN%" main.py
 
 pause
-
