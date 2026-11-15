@@ -21,6 +21,7 @@ import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 # Ajustar sys.path para imports locales
 sys.path.insert(0, str(Path(__file__).parent))
@@ -62,10 +63,40 @@ errors_logger = logging.getLogger("nettrap.errors")
 # Contraseña administrativa segura
 DEMO_PASSWORD = os.environ.get("NETTRAP_PASS", "nettrap2026")
 
+# ── Ciclo de Vida del Sistema (Lifespan Context Manager) ────────────────────
+collector_mgr:  MultiSourceCollectorManager = None
+correlator_eng: CorrelationEngine           = None
+alert_disp:     AlertDispatcher             = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global collector_mgr, correlator_eng, alert_disp
+
+    logger.info("Iniciando componentes del sistema NetTrap-SIEM...")
+    collector_mgr  = MultiSourceCollectorManager()
+    correlator_eng = CorrelationEngine()
+    alert_disp     = AlertDispatcher()
+
+    collector_mgr.start()
+    correlator_eng.start()
+    alert_disp.start()
+
+    broadcast_task = asyncio.create_task(broadcast_loop())
+    logger.info("NetTrap-SIEM 100%% Operativo. Dashboard: http://%s:%d", HOST, PORT)
+    yield
+    broadcast_task.cancel()
+    if collector_mgr:  collector_mgr.stop()
+    if correlator_eng: correlator_eng.stop()
+    if alert_disp:     alert_disp.stop()
+    logger.info("NetTrap-SIEM detenido correctamente.")
+
+
 # ── FastAPI app ───────────────────────────────────────────────────────────────
 app = FastAPI(
-    title="NetTrap-IPS SIEM Engine",
-    version="3.0.0",
+    title="NetTrap-SIEM Engine",
+    version="3.2.0",
+    lifespan=lifespan,
     docs_url=None,    # Deshabilitado en producción por Zero Trust
     redoc_url=None,
 )
@@ -662,37 +693,6 @@ def _audit_auth(action: str, user: str, ip: str) -> None:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
     except Exception as exc:
         errors_logger.error("Error al escribir auditoría: %s", exc)
-
-
-# ── Ciclo de Vida del Sistema ────────────────────────────────────────────────
-collector_mgr:  MultiSourceCollectorManager = None
-correlator_eng: CorrelationEngine           = None
-alert_disp:     AlertDispatcher             = None
-
-
-@app.on_event("startup")
-async def startup():
-    global collector_mgr, correlator_eng, alert_disp
-
-    logger.info("Iniciando componentes del sistema NetTrap-IPS...")
-    collector_mgr  = MultiSourceCollectorManager()
-    correlator_eng = CorrelationEngine()
-    alert_disp     = AlertDispatcher()
-
-    collector_mgr.start()
-    correlator_eng.start()
-    alert_disp.start()
-
-    asyncio.create_task(broadcast_loop())
-    logger.info("NetTrap-IPS 100%% Operativo. Dashboard: http://%s:%d", HOST, PORT)
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    if collector_mgr:  collector_mgr.stop()
-    if correlator_eng: correlator_eng.stop()
-    if alert_disp:     alert_disp.stop()
-    logger.info("NetTrap-IPS detenido correctamente.")
 
 
 if __name__ == "__main__":
