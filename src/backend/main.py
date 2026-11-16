@@ -102,6 +102,7 @@ app = FastAPI(
 )
 
 FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
+(FRONTEND_DIR / "static").mkdir(parents=True, exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(FRONTEND_DIR / "templates"))
 
@@ -109,8 +110,8 @@ templates = Jinja2Templates(directory=str(FRONTEND_DIR / "templates"))
 @app.middleware("http")
 async def audit_external_traffic(request: Request, call_next):
     client_ip = request.client.host if request.client and request.client.host else "127.0.0.1"
-    # No auditar las propias peticiones del operador local
-    if client_ip and client_ip not in ("127.0.0.1", "::1", "localhost", "192.168.88.234"):
+    # No auditar las propias peticiones del operador local o cliente de prueba
+    if client_ip and client_ip not in ("127.0.0.1", "::1", "localhost", "testclient", "192.168.88.234"):
         path = request.url.path
         if not path.startswith("/static"):
             ua = request.headers.get("user-agent", "")

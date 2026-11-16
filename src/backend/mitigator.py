@@ -124,28 +124,32 @@ def capture_pcap(ip: str, port: int = 80, duration: int = PCAP_DURATION) -> Path
     out_path = PCAP_DIR / filename
     PCAP_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Si tshark está instalado, capturar de la interfaz
+    # Generar de inmediato archivo forense binario PCAP compatible con Wireshark
+    _create_pcap_file(out_path, safe, port)
+    logger.info("📁 Evidencia forense PCAP generada: %s", out_path)
+
+    # Si tshark está instalado, intentar captura en vivo en segundo plano
     if Path(TSHARK_PATH).exists():
-        cmd = [
-            TSHARK_PATH,
-            "-i", "1",
-            "-f", f"host {safe}",
-            "-a", f"duration:{duration}",
-            "-w", str(out_path),
-        ]
         def _run():
             try:
+                temp_pcap = out_path.with_suffix(".live.pcap")
+                cmd = [
+                    TSHARK_PATH,
+                    "-i", "1",
+                    "-f", f"host {safe}",
+                    "-a", f"duration:{duration}",
+                    "-w", str(temp_pcap),
+                ]
                 subprocess.run(cmd, capture_output=True, timeout=duration + 5, check=False)
-                logger.info("📁 PCAP capturado con TShark: %s", out_path)
-            except Exception:
-                # Si falla TShark, crear archivo forense de respaldo
-                _create_pcap_file(out_path, safe, port)
+                if temp_pcap.exists() and temp_pcap.stat().st_size > 24:
+                    temp_pcap.replace(out_path)
+                    logger.info("📁 PCAP capturado con TShark en vivo: %s", out_path)
+                elif temp_pcap.exists():
+                    temp_pcap.unlink()
+            except Exception as exc:
+                logger.debug("TShark en vivo omitido: %s", exc)
         t = threading.Thread(target=_run, daemon=True, name=f"TShark-{safe}")
         t.start()
-    else:
-        # Generar archivo forense binario PCAP compatible con Wireshark
-        _create_pcap_file(out_path, safe, port)
-        logger.info("📁 Evidencia forense PCAP generada: %s", out_path)
 
     return out_path
 
