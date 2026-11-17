@@ -5,9 +5,25 @@ Norma: NIST SP 800-218 (SSDF) PW.9.1 — datos de configuración separados del c
 """
 
 import os
+import socket
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent  # src/
+
+
+def get_local_host_ip() -> str:
+    """Detecta dinámicamente la IP local de red de este equipo (ej. 192.168.x.x)."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("8.8.8.8", 80))
+        return s.getsockname()[0]
+    except Exception:
+        return "127.0.0.1"
+    finally:
+        s.close()
+
+
+LOCAL_HOST_IP = get_local_host_ip()
 
 # ── Directorios de datos ─────────────────────────────────────────────────────
 DATA_DIR  = BASE_DIR / "data"
@@ -18,7 +34,7 @@ RULES_FILE = BASE_DIR / "rules" / "detection_rules.yaml"
 # ── Servidor web ──────────────────────────────────────────────────────────────
 # 0.0.0.0 permite recibir tráfico y pruebas de ataque desde otros PCs de la red local
 HOST        = os.environ.get("NETTRAP_HOST", "0.0.0.0")
-PORT        = 8000
+PORT        = int(os.environ.get("NETTRAP_PORT", "8000"))
 SECRET_KEY  = os.environ.get("NETTRAP_SECRET", "cambiar_en_produccion_32bytes!!")
 
 # ── Autenticación (OWASP ASVS V2.1 / V3.1) ───────────────────────────────────

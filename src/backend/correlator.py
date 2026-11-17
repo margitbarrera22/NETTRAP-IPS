@@ -88,6 +88,10 @@ class CorrelationEngine(threading.Thread):
         self._counter = SlidingWindowCounter()
         self._stop_evt = threading.Event()
         self._audit_path = LOG_DIR / "audit.jsonl"
+        self._last_alert_ts: dict[tuple[str, str], float] = {}
+        self._alert_cooldown_secs = 12.0
+        self._ip_samples: dict[str, deque] = defaultdict(lambda: deque(maxlen=6))
+        self._ip_ports: dict[str, deque] = defaultdict(lambda: deque(maxlen=8))
 
     def _audit(self, record: dict) -> None:
         """Almacena auditoría en modo append-only (OWASP ASVS V8.1.1)."""
@@ -122,6 +126,15 @@ class CorrelationEngine(threading.Thread):
             logger.debug("IP %s en lista blanca — exenta de aislamiento", ip)
             return
 
+        ev_title = str(event.get("evento", ""))
+        puerto = int(event.get("puerto", 0) or 0)
+        if ev_title and ev_title not in self._ip_samples[ip]:
+            self._ip_samples[ip].append(ev_title)
+        if puerto and puerto not in self._ip_ports[ip]:
+            self._ip_ports[ip].append(puerto)
+
+        is_http_probe = any(k in ev_title.lower() for k in ("sondeo http", "tráfico externo", "http", "log4shell"))
+
         matched_alerts = []
 
         for rule in self.rules:
@@ -130,11 +143,16 @@ class CorrelationEngine(threading.Thread):
             window = float(rule.get("window_seconds", 60))
             threshold = int(rule.get("threshold", 5))
 
-            # Verificar coincidencia de fuente o aplicar correlación general
+            # Diferenciar RULE-002 (Escaneo de puertos TCP/SYN) vs RULE-004 (Sondeo HTTP/Web)
+            if rid == "RULE-002" and is_http_probe:
+                continue
+            if rid == "RULE-004" and not is_http_probe:
+                continue
+
+            # Verificar coincidencia estricta de fuente con la regla YAML
             source_matches = (
                 not rule_source or 
-                rule_source == event_source or
-                is_simulation
+                rule_source == event_source
             )
 
             if not source_matches:
@@ -152,22 +170,36 @@ class CorrelationEngine(threading.Thread):
         sev_rank = {"CRITICAL": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1}
         best_rule, count = max(matched_alerts, key=lambda x: sev_rank.get(x[0].get("severity", "LOW"), 0))
 
+        # Evitar inundación de alertas idénticas en el mismo segundo (cooldown de 12s por IP + regla)
+        cooldown_key = (ip, best_rule["id"])
+        last_ts = self._last_alert_ts.get(cooldown_key, 0.0)
+        if not is_simulation and (now - last_ts) < self._alert_cooldown_secs:
+            self._counter.reset_for_ip(ip)
+            return
+        self._last_alert_ts[cooldown_key] = now
+
+        ports_list = list(self._ip_ports[ip]) or ([puerto] if puerto else [])
+        samples_list = list(self._ip_samples[ip])[-4:]
+        ports_str = ", ".join(str(p) for p in ports_list) if ports_list else str(puerto)
+
         alert = {
-            "timestamp":     datetime.now(timezone.utc).isoformat(),
-            "type":          "ALERT",
-            "rule_id":       best_rule["id"],
-            "rule_name":     best_rule["name"],
-            "origen":        event_source,
-            "ip_origen":     ip,
-            "puerto":        event.get("puerto", 0),
-            "severidad":     best_rule["severity"],
-            "accion":        best_rule["action"],
-            "count":         count,
-            "threshold":     best_rule["threshold"],
-            "cve_mitigated": best_rule.get("cve_mitigated", []),
+            "timestamp":         datetime.now(timezone.utc).isoformat(),
+            "type":              "ALERT",
+            "rule_id":           best_rule["id"],
+            "rule_name":         best_rule["name"],
+            "origen":            event_source,
+            "ip_origen":         ip,
+            "puerto":            puerto,
+            "puertos_afectados": ports_list,
+            "muestras":          samples_list,
+            "severidad":         best_rule["severity"],
+            "accion":            best_rule["action"],
+            "count":             count,
+            "threshold":         best_rule["threshold"],
+            "cve_mitigated":     best_rule.get("cve_mitigated", []),
             "descripcion": (
                 f"[{best_rule['id']}] {ip} activó {count}/{best_rule['threshold']} eventos en "
-                f"{best_rule['window_seconds']}s mediante {event_source} — {best_rule['name']}"
+                f"{best_rule['window_seconds']}s hacia puerto(s) [{ports_str}] — {best_rule['name']}"
             )
         }
 

@@ -25,13 +25,20 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from config import TSHARK_PATH, PCAP_DIR, PCAP_DURATION, BLOCK_TIMEOUT, LOG_DIR
+from config import TSHARK_PATH, PCAP_DIR, PCAP_DURATION, BLOCK_TIMEOUT, LOG_DIR, LOCAL_HOST_IP
 
 logger = logging.getLogger("nettrap.mitigator")
 
 # ── Registro en memoria de IPs bloqueadas: ip → timer thread ─────────────────
-_blocked: dict[str, threading.Timer] = {}
+_blocked: dict[str, dict] = {}
 _blocked_lock = threading.Lock()
+_active_pcap_captures: dict[str, Path] = {}
+
+
+def is_ip_blocked(ip: str) -> bool:
+    """Retorna True si la IP se encuentra actualmente en cuarentena."""
+    with _blocked_lock:
+        return ip in _blocked
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -77,7 +84,10 @@ def _create_pcap_file(filepath: Path, ip_str: str, port: int = 80) -> None:
         src_ip_bytes = socket.inet_aton(ip_str)
     except Exception:
         src_ip_bytes = socket.inet_aton("192.168.1.100")
-    dst_ip_bytes = socket.inet_aton("192.168.1.10")
+    try:
+        dst_ip_bytes = socket.inet_aton(LOCAL_HOST_IP if LOCAL_HOST_IP != "127.0.0.1" else "192.168.1.10")
+    except Exception:
+        dst_ip_bytes = socket.inet_aton("192.168.1.10")
 
     # IPv4 Header (20 bytes)
     ip_hdr = struct.pack(
@@ -119,10 +129,20 @@ def capture_pcap(ip: str, port: int = 80, duration: int = PCAP_DURATION) -> Path
         logger.error("capture_pcap: IP inválida: %r", ip)
         return None
 
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    filename = f"evidencia_{safe.replace(':', '_')}_{ts}.pcap"
+    with _blocked_lock:
+        existing_pcap = _active_pcap_captures.get(safe)
+        if existing_pcap and existing_pcap.exists():
+            return existing_pcap
+
+    now_dt = datetime.now(timezone.utc)
+    ts = now_dt.strftime("%Y%m%d_%H%M%S")
+    ms = int(now_dt.microsecond / 1000)
+    filename = f"evidencia_{safe.replace(':', '_')}_{ts}_{ms:03d}.pcap"
     out_path = PCAP_DIR / filename
     PCAP_DIR.mkdir(parents=True, exist_ok=True)
+
+    with _blocked_lock:
+        _active_pcap_captures[safe] = out_path
 
     # Generar de inmediato archivo forense binario PCAP compatible con Wireshark
     _create_pcap_file(out_path, safe, port)
@@ -148,6 +168,10 @@ def capture_pcap(ip: str, port: int = 80, duration: int = PCAP_DURATION) -> Path
                     temp_pcap.unlink()
             except Exception as exc:
                 logger.debug("TShark en vivo omitido: %s", exc)
+            finally:
+                with _blocked_lock:
+                    if _active_pcap_captures.get(safe) == out_path:
+                        _active_pcap_captures.pop(safe, None)
         t = threading.Thread(target=_run, daemon=True, name=f"TShark-{safe}")
         t.start()
 

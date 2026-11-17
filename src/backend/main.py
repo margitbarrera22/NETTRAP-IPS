@@ -37,13 +37,19 @@ from fastapi.templating import Jinja2Templates
 import uvicorn
 
 from config import (
-    HOST, PORT, SECRET_KEY, LOG_DIR, PCAP_DIR,
-    ADMIN_USER, SESSION_EXPIRE_SECS, MAX_FAILED_LOGINS, LOCKOUT_SECS
+    HOST, PORT, SECRET_KEY, LOG_DIR, PCAP_DIR, TSHARK_PATH,
+    ADMIN_USER, SESSION_EXPIRE_SECS, MAX_FAILED_LOGINS, LOCKOUT_SECS, LOCAL_HOST_IP
 )
 from collectors import MultiSourceCollectorManager, normalize_event, validate_ip
 from correlator import CorrelationEngine, recent_alerts_history, recent_events_history
 from dispatcher import AlertDispatcher, ws_broadcast_queue
-from mitigator import unblock_ip_manual, get_blocked_ips
+from mitigator import unblock_ip_manual, get_blocked_ips, is_ip_blocked
+from soc_tools import (
+    run_system_diagnostics,
+    compute_analytics,
+    render_executive_report_html,
+    scan_local_network,
+)
 
 # ── Logging de Auditoría y Errores ────────────────────────────────────────────
 LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -115,15 +121,25 @@ async def audit_external_traffic(request: Request, call_next):
         path = request.url.path
         if not path.startswith("/static"):
             ua = request.headers.get("user-agent", "")
-            is_probe = path in ("/login", "/", "/api/simulate", "/api/block") or any(k in ua.lower() for k in ("nmap", "nikto", "sqlmap", "curl", "python"))
+            is_probe = (
+                path in ("/login", "/", "/api/simulate", "/api/block")
+                or any(k in path.lower() for k in ("nmap", "sdk", "hnap", "evox", ".env", "admin", "config", "backup"))
+                or any(k in ua.lower() for k in ("nmap", "nikto", "sqlmap", "curl", "python", "hydra", "gobuster", "dirbuster"))
+            )
+            ua_short = ua[:40] if ua else "Sin User-Agent"
             normalize_event(
                 origen="network_traffic",
                 severidad="HIGH" if is_probe else "MEDIUM",
-                evento=f"Tráfico Externo [{request.method} {path}]",
+                evento=f"Sondeo HTTP [{request.method} {path}]",
                 ip_origen=client_ip,
-                descripcion=f"Conexión entrante desde la red local ({client_ip}) hacia puerto 8000 ({path})",
+                descripcion=f"Petición HTTP {request.method} {path} desde {client_ip} (UA: {ua_short}) hacia puerto 8000",
                 puerto=8000
             )
+            if is_ip_blocked(client_ip):
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": f"Acceso denegado: IP {client_ip} en cuarentena activa por NetTrap-IPS."}
+                )
     return await call_next(request)
 
 # ── Zero Trust Session & Lockout Management ──────────────────────────────────
@@ -163,13 +179,15 @@ def _get_session(request: Request) -> dict | None:
 
 
 def require_auth(request: Request) -> dict:
+    """Acceso directo a la consola SOC (sin pantalla de login)."""
     session = _get_session(request)
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_303_SEE_OTHER,
-            headers={"Location": "/login"}
-        )
-    return session
+    if session:
+        return session
+    return {
+        "user": ADMIN_USER,
+        "token": "",
+        "ip": _get_client_ip(request),
+    }
 
 
 # ── WebSocket Manager (Zero Trust Authenticated) ──────────────────────────────
@@ -279,14 +297,21 @@ NIST_CVES_DATA = [
 # ── Rutas Web y Autenticación (Zero Trust) ───────────────────────────────────
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+    return Response(status_code=303, headers={"Location": "/"})
 
 
 @app.post("/login")
 async def login_submit(request: Request):
-    form = await request.form()
-    username = str(form.get("username", "")).strip()
-    password = str(form.get("password", ""))
+    from urllib.parse import parse_qs
+    try:
+        form = await request.form()
+        username = str(form.get("username", "")).strip()
+        password = str(form.get("password", ""))
+    except Exception:
+        raw_body = (await request.body()).decode("utf-8", errors="replace")
+        parsed = parse_qs(raw_body, keep_blank_values=True)
+        username = str(parsed.get("username", [""])[0]).strip()
+        password = str(parsed.get("password", [""])[0])
     client_ip = _get_client_ip(request)
 
     # 1. Rate Limiting anti-bruteforce (OWASP ASVS V2.1)
@@ -298,6 +323,7 @@ async def login_submit(request: Request):
     if len(fails) >= MAX_FAILED_LOGINS:
         logger.warning("BLOQUEO TEMPORAL: Demasiados intentos fallidos desde %s", client_ip)
         return templates.TemplateResponse(
+            request,
             "login.html",
             {"request": request, "error": f"Acceso temporalmente bloqueado por {LOCKOUT_SECS // 60} minutos."},
             status_code=429
@@ -311,6 +337,7 @@ async def login_submit(request: Request):
         logger.warning("Fallo de autenticación: usuario='%s' desde IP %s", username, client_ip)
         _audit_auth("LOGIN_FAILED", username, client_ip)
         return templates.TemplateResponse(
+            request,
             "login.html",
             {"request": request, "error": "Credenciales incorrectas."},
             status_code=401
@@ -346,7 +373,7 @@ async def logout(request: Request):
     token = request.cookies.get("nettrap_session")
     if token:
         _sessions.pop(token, None)
-    resp = Response(status_code=303, headers={"Location": "/login"})
+    resp = Response(status_code=303, headers={"Location": "/"})
     resp.delete_cookie("nettrap_session", path="/")
     return resp
 
@@ -354,11 +381,30 @@ async def logout(request: Request):
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request, session=Depends(require_auth)):
     token = session.get("token") or request.cookies.get("nettrap_session", "")
-    return templates.TemplateResponse("dashboard.html", {
+    return templates.TemplateResponse(request, "dashboard.html", {
         "request": request,
         "user": session["user"],
-        "token": token
+        "token": token,
+        "host_ip": LOCAL_HOST_IP,
+        "port": PORT
     })
+
+
+@app.post("/api/clear")
+async def api_clear(session=Depends(require_auth)):
+    """Limpia el monitor en memoria y libera las IPs en cuarentena para iniciar una nueva prueba desde cero."""
+    recent_alerts_history.clear()
+    recent_events_history.clear()
+    if correlator_eng:
+        correlator_eng._last_alert_ts.clear()
+        correlator_eng._ip_samples.clear()
+        correlator_eng._ip_ports.clear()
+    for item in get_blocked_ips():
+        ip_val = item.get("ip") if isinstance(item, dict) else str(item)
+        if ip_val:
+            unblock_ip_manual(ip_val)
+    _audit_auth("CLEAR_MONITOR_AND_UNBLOCK_ALL", session["user"], "dashboard")
+    return JSONResponse({"ok": True})
 
 
 # ── APIs REST Operativas (Zero Trust Authenticated) ───────────────────────────
@@ -654,6 +700,59 @@ async def nmap_port_audit(session=Depends(require_auth)):
     })
 
 
+@app.get("/api/diagnostics")
+async def api_diagnostics(session=Depends(require_auth)):
+    """Health Check de permisos de Administrador, Firewall log, EventLog 4625, TShark y sensores."""
+    data = await asyncio.to_thread(
+        run_system_diagnostics, collector_mgr, TSHARK_PATH, LOCAL_HOST_IP, PORT
+    )
+    return JSONResponse(data)
+
+
+@app.get("/api/analytics")
+async def api_analytics(session=Depends(require_auth)):
+    """Analítica agregada de top IPs atacantes, puertos sondeados, reglas y CVEs mitigados."""
+    data = compute_analytics(
+        list(recent_alerts_history),
+        list(recent_events_history),
+        get_blocked_ips(),
+        PCAP_DIR,
+        NIST_CVES_DATA,
+    )
+    return JSONResponse(data)
+
+
+@app.get("/api/report/html", response_class=HTMLResponse)
+async def api_report_html(download: bool = False, session=Depends(require_auth)):
+    """Genera un informe ejecutivo SOC imprimible a PDF o descargable como HTML."""
+    analytics = compute_analytics(
+        list(recent_alerts_history),
+        list(recent_events_history),
+        get_blocked_ips(),
+        PCAP_DIR,
+        NIST_CVES_DATA,
+    )
+    diag = await asyncio.to_thread(
+        run_system_diagnostics, collector_mgr, TSHARK_PATH, LOCAL_HOST_IP, PORT
+    )
+    report_html = render_executive_report_html(analytics, LOCAL_HOST_IP, PORT, diag)
+    headers = {}
+    if download:
+        fname = f"nettrap_informe_soc_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+        headers["Content-Disposition"] = f'attachment; filename="{fname}"'
+    return HTMLResponse(content=report_html, headers=headers)
+
+
+@app.get("/api/lan/scan")
+async def api_lan_scan(session=Depends(require_auth)):
+    """Descubre equipos activos conectados en la misma subred LAN mediante ARP."""
+    whitelist = correlator_eng.whitelist if correlator_eng else []
+    data = await asyncio.to_thread(
+        scan_local_network, LOCAL_HOST_IP, get_blocked_ips(), whitelist
+    )
+    return JSONResponse(data)
+
+
 # ── WebSocket Endpoint (Zero Trust Authenticated) ─────────────────────────────
 @app.websocket("/ws/alerts")
 async def ws_alerts(websocket: WebSocket):
@@ -661,14 +760,14 @@ async def ws_alerts(websocket: WebSocket):
     if not token and "token" in websocket.query_params:
         token = websocket.query_params["token"]
 
+    client_host = websocket.client.host if websocket.client else "127.0.0.1"
+    if is_ip_blocked(client_host):
+        await websocket.close(code=4003)
+        return
+
     session = _sessions.get(token) if token else None
     if not session:
-        client_host = websocket.client.host if websocket.client else "127.0.0.1"
-        if client_host in ("127.0.0.1", "::1", "localhost", "192.168.88.234"):
-            session = list(_sessions.values())[-1] if len(_sessions) > 0 else {"user": "admin", "ip": client_host}
-        else:
-            await websocket.close(code=4001)
-            return
+        session = {"user": ADMIN_USER, "ip": client_host}
 
     await manager.connect(websocket)
     logger.info("WS conectado: usuario '%s' (Clientes: %d)", session["user"], manager.count)

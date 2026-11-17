@@ -100,6 +100,7 @@ class WindowsEventLogCollector(threading.Thread):
         self.interval = interval_seconds
         self._stop_evt = threading.Event()
         self._last_checked = time.time() - 30
+        self._seen_records: set[str] = set()
 
     def run(self) -> None:
         logger.info("WindowsEventLogCollector iniciado (Canal Security/System)")
@@ -111,31 +112,92 @@ class WindowsEventLogCollector(threading.Thread):
             time.sleep(self.interval)
 
     def _poll_security_events(self) -> None:
-        """Consulta los eventos de fallo de autenticación EventID 4625 más recientes."""
-        cmd = [
+        """Consulta los eventos de fallo de autenticación EventID 4625 más recientes (XML + Texto ES/EN)."""
+        cmd_xml = [
             "wevtutil", "qe", "Security",
             "/q:*[System[(EventID=4625) and TimeCreated[timediff(@SystemTime) <= 60000]]]",
-            "/f:text", "/c:5", "/rd:true"
+            "/f:xml", "/c:15", "/rd:true"
         ]
         try:
-            res = subprocess.run(cmd, capture_output=True, timeout=5, check=False)
+            res = subprocess.run(cmd_xml, capture_output=True, timeout=5, check=False)
+            if res.returncode == 0 and res.stdout:
+                xml_text = res.stdout.decode("utf-8", errors="ignore")
+                if "<Event" in xml_text:
+                    self._parse_wevtutil_xml(xml_text)
+                    return
+        except Exception:
+            pass
+
+        cmd_txt = [
+            "wevtutil", "qe", "Security",
+            "/q:*[System[(EventID=4625) and TimeCreated[timediff(@SystemTime) <= 60000]]]",
+            "/f:text", "/c:10", "/rd:true"
+        ]
+        try:
+            res = subprocess.run(cmd_txt, capture_output=True, timeout=5, check=False)
             if res.returncode == 0 and res.stdout:
                 text = res.stdout.decode("cp1252", errors="ignore")
                 self._parse_wevtutil_output(text)
         except Exception:
             pass
 
-    def _parse_wevtutil_output(self, text: str) -> None:
-        """Extrae la IP agresora y datos de la salida de wevtutil."""
-        events = text.split("Event[")
-        ip_regex = re.compile(r"Source Network Address:\s*([^\s\r\n]+)")
-        user_regex = re.compile(r"Account For Which Logon Failed:.*?Account Name:\s*([^\s\r\n]+)", re.DOTALL)
+    def _parse_wevtutil_xml(self, xml_text: str) -> None:
+        """Extrae EventRecordID, IpAddress y TargetUserName del XML nativo de Windows (independiente del idioma)."""
+        events = xml_text.split("<Event ")
+        rec_regex = re.compile(r"<EventRecordID>(\d+)</EventRecordID>")
+        ip_regex = re.compile(r"<Data Name=['\"]IpAddress['\"]>([^<]+)</Data>")
+        user_regex = re.compile(r"<Data Name=['\"]TargetUserName['\"]>([^<]+)</Data>")
+        port_regex = re.compile(r"<Data Name=['\"]IpPort['\"]>([^<]+)</Data>")
 
         for ev in events:
             if not ev.strip():
                 continue
+            rec_match = rec_regex.search(ev)
+            rec_id = rec_match.group(1) if rec_match else None
+            if rec_id and rec_id in self._seen_records:
+                continue
+
             ip_match = ip_regex.search(ev)
             if ip_match:
+                raw_ip = ip_match.group(1).strip()
+                if rec_id:
+                    self._seen_records.add(rec_id)
+                user_match = user_regex.search(ev)
+                target_user = user_match.group(1).strip() if user_match else "Desconocido"
+                port_match = port_regex.search(ev)
+                puerto = int(port_match.group(1)) if (port_match and port_match.group(1).isdigit()) else 445
+
+                normalize_event(
+                    origen="windows_event_log",
+                    severidad="HIGH",
+                    evento="Fallo de Autenticación Windows (EventID 4625)",
+                    ip_origen=raw_ip,
+                    descripcion=f"Fallo de inicio de sesión para el usuario '{target_user}' registrado en Security.evtx",
+                    puerto=puerto
+                )
+
+    def _parse_wevtutil_output(self, text: str) -> None:
+        """Extrae la IP agresora y datos de la salida de texto de wevtutil (Español e Inglés)."""
+        events = text.split("Event[")
+        ip_regex = re.compile(
+            r"(?:Source Network Address|Direcci[oó]n de red de origen):\s*([^\s\r\n]+)",
+            re.IGNORECASE
+        )
+        user_regex = re.compile(
+            r"(?:Account For Which Logon Failed|Cuenta para la que se produjo un error de inicio de sesi[oó]n):.*?"
+            r"(?:Account Name|Nombre de cuenta):\s*([^\s\r\n]+)",
+            re.DOTALL | re.IGNORECASE
+        )
+
+        for ev in events:
+            if not ev.strip():
+                continue
+            ev_sig = str(hash(ev[:240]))
+            if ev_sig in self._seen_records:
+                continue
+            ip_match = ip_regex.search(ev)
+            if ip_match:
+                self._seen_records.add(ev_sig)
                 raw_ip = ip_match.group(1).strip()
                 user_match = user_regex.search(ev)
                 target_user = user_match.group(1).strip() if user_match else "Desconocido"
@@ -230,6 +292,13 @@ class NetworkTrafficCollector(threading.Thread):
     para detectar ráfagas de reconocimiento y conexiones anómalas.
     """
 
+    # Puertos de servicios locales monitoreados ante escaneos Nmap / intrusiones
+    SERVICE_PORTS = {
+        21, 22, 23, 25, 53, 80, 110, 135, 139, 143, 443, 445,
+        993, 995, 1433, 1521, 3306, 3389, 5432, 5900, 5985, 5986,
+        6379, 8000, 8001, 8080, 8443, 9000, 27017
+    }
+
     def __init__(self, interval_seconds: float = 1.0):
         super().__init__(daemon=True, name="Collector-NetTraffic")
         self.interval = interval_seconds
@@ -246,30 +315,52 @@ class NetworkTrafficCollector(threading.Thread):
             time.sleep(self.interval)
 
     def _inspect_active_connections(self) -> None:
-        """Ejecuta netstat para recolectar conexiones activas sin bloquear el sistema."""
+        """Ejecuta netstat para recolectar conexiones entrantes hacia servicios del host."""
         try:
-            res = subprocess.run(["netstat", "-n", "-p", "tcp"], capture_output=True, timeout=4, check=False)
+            res = subprocess.run(["netstat", "-a", "-n", "-p", "tcp"], capture_output=True, timeout=4, check=False)
             if res.returncode != 0 or not res.stdout:
                 return
 
             stdout_text = res.stdout.decode("cp1252", errors="ignore")
-            current_keys = set()
-            for line in stdout_text.splitlines():
-                line = line.strip()
-                if not line.startswith("TCP"):
+            lines = stdout_text.splitlines()
+
+            # 1. Identificar todos los puertos locales en estado LISTENING (< 49152)
+            listening_ports = set(self.SERVICE_PORTS)
+            for line in lines:
+                line_s = line.strip()
+                if not line_s.startswith("TCP"):
                     continue
-                parts = line.split()
+                parts = line_s.split()
+                if len(parts) >= 4 and parts[3] == "LISTENING" and ":" in parts[1]:
+                    lp_str = parts[1].rsplit(":", 1)[1]
+                    if lp_str.isdigit() and int(lp_str) < 49152:
+                        listening_ports.add(int(lp_str))
+
+            # 2. Inspeccionar conexiones activas entrantes hacia puertos de servicio locales
+            current_keys = set()
+            for line in lines:
+                line_s = line.strip()
+                if not line_s.startswith("TCP"):
+                    continue
+                parts = line_s.split()
                 if len(parts) >= 4:
                     local_addr = parts[1]
                     foreign_addr = parts[2]
                     state = parts[3]
 
-                    # Filtrar conexiones entrantes relevantes (cualquier estado de negociación o cierre)
                     if state in ("ESTABLISHED", "SYN_RECEIVED", "TIME_WAIT", "CLOSE_WAIT", "FIN_WAIT_1", "FIN_WAIT_2"):
-                        if ":" in foreign_addr:
-                            remote_ip = foreign_addr.rsplit(":", 1)[0]
-                            local_port = local_addr.rsplit(":", 1)[1] if ":" in local_addr else "0"
-                            conn_key = (remote_ip, local_port, state)
+                        if ":" in foreign_addr and ":" in local_addr:
+                            remote_ip, remote_port = foreign_addr.rsplit(":", 1)
+                            local_port = local_addr.rsplit(":", 1)[1]
+                            if not local_port.isdigit():
+                                continue
+                            local_port_int = int(local_port)
+
+                            # Ignorar conexiones salientes de cliente desde puertos efímeros (>= 49152)
+                            if local_port_int >= 49152 or local_port_int not in listening_ports:
+                                continue
+
+                            conn_key = (remote_ip, local_port, remote_port)
                             current_keys.add(conn_key)
 
                             if conn_key not in self._seen_connections:
@@ -278,10 +369,10 @@ class NetworkTrafficCollector(threading.Thread):
                                     normalize_event(
                                         origen="network_traffic",
                                         severidad="MEDIUM" if state == "ESTABLISHED" else "HIGH",
-                                        evento=f"Conexión de Red Detectada ({state})",
+                                        evento=f"Conexión de Red Entrante ({state})",
                                         ip_origen=valid,
-                                        descripcion=f"Tráfico entrante hacia puerto local {local_port} en estado {state}",
-                                        puerto=int(local_port) if local_port.isdigit() else 0
+                                        descripcion=f"Conexión entrante desde {valid}:{remote_port} hacia puerto local {local_port} ({state})",
+                                        puerto=local_port_int
                                     )
 
             self._seen_connections = current_keys

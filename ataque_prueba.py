@@ -260,6 +260,7 @@ def fase4_fuerza_bruta_smb(target):
             ]
             result = subprocess.run(
                 cmd, capture_output=True, text=True,
+                encoding="cp850", errors="replace",
                 timeout=5, check=False
             )
             # Limpiar cualquier conexión residual
@@ -351,28 +352,37 @@ def main():
     print(f"  Hora de inicio: {time.strftime('%Y-%m-%d %H:%M:%S')}")
     print()
 
-    # Verificar que el servidor está corriendo
-    if not servidor_activo(target, 8000):
-        print(f"  [ERROR] El servidor NetTrap-IPS NO responde en {target}:8000")
-        print()
-        print("  Antes de ejecutar este script:")
-        print("    1. Abre un terminal como Administrador")
-        print("    2. Ejecuta:  start.bat")
-        print("    3. Espera a ver 'Uvicorn running on http://0.0.0.0:8000'")
-        print("    4. Abre el Dashboard en:  http://127.0.0.1:8000")
-        print("    5. Ejecuta este script en OTRO terminal")
-        sys.exit(1)
+    # Verificar en qué puerto está corriendo el servidor (8000 o fallback 8001)
+    import os
+    port = int(os.environ.get("NETTRAP_PORT", "8000"))
+    if not servidor_activo(target, port):
+        if servidor_activo(target, 8001):
+            port = 8001
+        else:
+            print(f"  [ERROR] El servidor NetTrap-IPS NO responde en {target}:{port}")
+            print()
+            print("  Antes de ejecutar este script:")
+            print("    1. Abre un terminal como Administrador")
+            print("    2. Ejecuta:  start.bat")
+            print("    3. Espera a ver 'Uvicorn running on http://0.0.0.0:8000'")
+            print("    4. Abre el Dashboard en:  http://127.0.0.1:8000")
+            print("    5. Ejecuta este script en OTRO terminal")
+            sys.exit(1)
 
-    print(f"  [OK] Servidor NetTrap-IPS activo en {target}:8000")
+    print(f"  [OK] Servidor NetTrap-IPS activo en {target}:{port}")
     print()
     print("  ADVERTENCIA:")
     print("  - Este script genera tráfico de ataque REAL contra el IPS.")
     print("  - El IPS bloqueará la IP de este equipo temporalmente (5 min).")
-    print("  - Tu Dashboard (abierto en http://127.0.0.1:8000) NO se afecta.")
+    print(f"  - Tu Dashboard (abierto en http://127.0.0.1:{port}) NO se afecta.")
     print("  - Mira la consola del servidor y el Dashboard mientras corre.")
     print()
 
-    input("  >>> Presiona ENTER para iniciar el ataque... ")
+    if "--auto" not in sys.argv:
+        try:
+            input("  >>> Presiona ENTER para iniciar el ataque... ")
+        except EOFError:
+            pass
 
     t0 = time.time()
 
@@ -380,11 +390,11 @@ def main():
     print("\n  [*] Esperando 2 segundos para que el IPS procese...\n")
     time.sleep(2)
 
-    fase2_sondeo_http(target)
+    fase2_sondeo_http(target, port)
     print("\n  [*] Esperando 2 segundos...\n")
     time.sleep(2)
 
-    fase3_fuerza_bruta_login(target)
+    fase3_fuerza_bruta_login(target, port)
     print("\n  [*] Esperando 2 segundos...\n")
     time.sleep(2)
 
@@ -392,7 +402,7 @@ def main():
     print("\n  [*] Esperando 2 segundos...\n")
     time.sleep(2)
 
-    fase5_rafaga_tcp(target)
+    fase5_rafaga_tcp(target, port)
 
     duracion = time.time() - t0
 
