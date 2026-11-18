@@ -25,7 +25,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from config import TSHARK_PATH, PCAP_DIR, PCAP_DURATION, BLOCK_TIMEOUT, LOG_DIR, LOCAL_HOST_IP
+from config import TSHARK_PATH, PCAP_DIR, PCAP_DURATION, BLOCK_TIMEOUT, LOG_DIR, LOCAL_HOST_IP, SUBPROC_FLAGS
 
 logger = logging.getLogger("nettrap.mitigator")
 
@@ -160,7 +160,7 @@ def capture_pcap(ip: str, port: int = 80, duration: int = PCAP_DURATION) -> Path
                     "-a", f"duration:{duration}",
                     "-w", str(temp_pcap),
                 ]
-                subprocess.run(cmd, capture_output=True, timeout=duration + 5, check=False)
+                subprocess.run(cmd, capture_output=True, timeout=duration + 5, check=False, creationflags=SUBPROC_FLAGS)
                 if temp_pcap.exists() and temp_pcap.stat().st_size > 24:
                     temp_pcap.replace(out_path)
                     logger.info("📁 PCAP capturado con TShark en vivo: %s", out_path)
@@ -215,7 +215,7 @@ def block_ip(ip: str, rule_id: str = "NETTRAP") -> dict:
     details = "Aislamiento activo en NetTrap-IPS"
 
     try:
-        result = subprocess.run(cmd, capture_output=True, timeout=5, check=False)
+        result = subprocess.run(cmd, capture_output=True, timeout=5, check=False, creationflags=SUBPROC_FLAGS)
         if result.returncode == 0:
             firewall_applied = True
             details = "Regla aplicada exitosamente en Windows Defender Firewall"
@@ -257,7 +257,7 @@ def _unblock_ip(ip: str, rule_name: str) -> None:
     """Elimina la regla tras expirar el temporizador."""
     cmd = ["netsh", "advfirewall", "firewall", "delete", "rule", f"name={rule_name}"]
     try:
-        subprocess.run(cmd, capture_output=True, text=True, timeout=5, check=False)
+        subprocess.run(cmd, capture_output=True, text=True, timeout=5, check=False, creationflags=SUBPROC_FLAGS)
     except Exception:
         pass
 

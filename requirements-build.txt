@@ -1,0 +1,5 @@
+# Dependencias adicionales necesarias solo para empaquetar NetTrap-IPS en .exe
+-r requirements.txt
+pyinstaller>=6.10.0
+pystray>=0.19.5
+pillow>=10.0.0
