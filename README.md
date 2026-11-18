@@ -7,7 +7,18 @@
 
 ---
 
-## ⚡ Guía Rápida de Evaluación en 3 Pasos (Out-of-the-Box)
+## 📦 Instalador y Ejecutable Windows (.exe) — Todo Incluido
+
+Si deseas entregar o instalar **NetTrap-IPS** en cualquier PC con Windows 10/11 **sin necesidad de instalar Python ni ejecutar comandos**, usa el instalador compilado en `dist\`:
+
+- **`dist\NetTrap-IPS-Setup.exe` (Recomendado):** Instalador completo de Windows. Copia toda la aplicación y dependencias, crea los accesos directos en Escritorio/Menú Inicio, registra el arranque automático en segundo plano al iniciar Windows (sin ventanas de consola ni comandos) y abre el Dashboard SOC inmediatamente al finalizar.
+- **`dist\NetTrap-IPS-Portable.exe`:** Ejecutable único portable sin instalación; al abrirlo levanta el servidor en la bandeja del sistema (junto al reloj) y abre el navegador automáticamente.
+- **Servidor siempre activo:** Una vez iniciado, puedes cerrar la pestaña del navegador y el servidor seguirá protegiendo el equipo desde el icono de **NetTrap-IPS** en la bandeja del sistema (clic derecho para abrir el Dashboard, ver la carpeta de evidencias `.pcap`/logs, activar/desactivar inicio con Windows o detener el servidor).
+- **Recompilar desde el código fuente:** Ejecuta `build_exe.bat` (o `.\build_exe.ps1`) para regenerar `NetTrap-IPS-Setup.exe` y `NetTrap-IPS-Portable.exe` en `dist\`.
+
+---
+
+## ⚡ Guía Rápida de Evaluación en 3 Pasos (Desde Código Fuente)
 
 > **Requisito único:** Windows 10/11 con **Python 3.11+** instalado. No necesitas crear entornos virtuales ni instalar librerías manualmente; el lanzador automático se encarga de todo.
 

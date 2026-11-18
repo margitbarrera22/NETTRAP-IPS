@@ -18,8 +18,9 @@ from collections import defaultdict, deque
 from datetime import datetime, timezone
 from pathlib import Path
 
-from config import RULES_FILE, LOG_DIR, QUEUE_MAX_SIZE
-from collectors import event_queue
+from config import RULES_FILE, LOG_DIR, QUEUE_MAX_SIZE, get_default_gateway
+from collectors import event_queue, _is_non_attack_ip
+from mitigator import is_ip_blocked
 
 logger = logging.getLogger("nettrap.correlator")
 
@@ -54,19 +55,20 @@ def load_rules(path: Path = RULES_FILE) -> tuple[list[dict], list[str]]:
 
 
 class SlidingWindowCounter:
-    """Mantiene contadores de eventos por IP y Regla dentro de una ventana temporal deslizante."""
+    """Mantiene contadores de eventos y puertos únicos por IP/Regla en ventana deslizante."""
 
     def __init__(self):
         self._lock = threading.RLock()
         self._windows: dict[str, dict[str, deque]] = defaultdict(lambda: defaultdict(deque))
 
-    def add_and_count(self, rule_id: str, ip: str, window_seconds: float, now: float) -> int:
+    def add_and_count(self, rule_id: str, ip: str, window_seconds: float, now: float, port: int = 0) -> tuple[int, int]:
         with self._lock:
             dq = self._windows[rule_id][ip]
-            dq.append(now)
-            while dq and (now - dq[0]) > window_seconds:
+            dq.append((now, port))
+            while dq and (now - dq[0][0]) > window_seconds:
                 dq.popleft()
-            return len(dq)
+            distinct_ports = len({p for _ts, p in dq if p > 0})
+            return len(dq), distinct_ports
 
     def reset_for_ip(self, ip: str) -> None:
         with self._lock:
@@ -85,6 +87,7 @@ class CorrelationEngine(threading.Thread):
     def __init__(self):
         super().__init__(daemon=True, name="CorrelationEngine")
         self.rules, self.whitelist = load_rules()
+        self._append_dynamic_whitelist()
         self._counter = SlidingWindowCounter()
         self._stop_evt = threading.Event()
         self._audit_path = LOG_DIR / "audit.jsonl"
@@ -92,6 +95,13 @@ class CorrelationEngine(threading.Thread):
         self._alert_cooldown_secs = 12.0
         self._ip_samples: dict[str, deque] = defaultdict(lambda: deque(maxlen=6))
         self._ip_ports: dict[str, deque] = defaultdict(lambda: deque(maxlen=8))
+
+    def _append_dynamic_whitelist(self) -> None:
+        """Protege dinámicamente al router/puerta de enlace actual contra auto-bloqueos."""
+        gw = get_default_gateway()
+        if gw and gw not in self.whitelist:
+            self.whitelist.append(gw)
+            logger.info("Whitelist dinámica: puerta de enlace %s protegida", gw)
 
     def _audit(self, record: dict) -> None:
         """Almacena auditoría en modo append-only (OWASP ASVS V8.1.1)."""
@@ -121,10 +131,14 @@ class CorrelationEngine(threading.Thread):
         # Registrar en telemetría de eventos crudos en vivo
         recent_events_history.append(event)
 
-        # 1. Whitelist anti-spoofing (ISO/IEC 27033-4 Cl. 9.2)
-        if ip in self.whitelist and not is_simulation:
-            logger.debug("IP %s en lista blanca — exenta de aislamiento", ip)
-            return
+        # 1. Whitelist anti-spoofing + filtro de IPs no atacantes (ISO/IEC 27033-4 Cl. 9.2)
+        if not is_simulation:
+            if ip in self.whitelist or _is_non_attack_ip(ip):
+                logger.debug("IP %s exenta de aislamiento (whitelist/enlace local)", ip)
+                return
+            if is_ip_blocked(ip):
+                logger.debug("IP %s ya está en cuarentena activa — omitiendo alerta repetida", ip)
+                return
 
         ev_title = str(event.get("evento", ""))
         puerto = int(event.get("puerto", 0) or 0)
@@ -158,9 +172,20 @@ class CorrelationEngine(threading.Thread):
             if not source_matches:
                 continue
 
-            count = self._counter.add_and_count(rid, ip, window, now)
+            count, distinct_ports = self._counter.add_and_count(rid, ip, window, now, port=puerto)
 
-            if count >= threshold:
+            if is_simulation:
+                triggered = count >= threshold
+            elif rid == "RULE-002":
+                # Evitar falsos positivos por múltiples sockets de un navegador al puerto 8000
+                triggered = (count >= threshold and distinct_ports >= 3) or count >= 8
+            elif rid == "RULE-003":
+                # Requerir barrido multipuerto o ráfaga repetida (>= 6) para evitar ruido LAN ocasional
+                triggered = (count >= threshold and distinct_ports >= 3) or count >= 6
+            else:
+                triggered = count >= threshold
+
+            if triggered:
                 matched_alerts.append((rule, count))
 
         if not matched_alerts:
@@ -221,4 +246,5 @@ class CorrelationEngine(threading.Thread):
 
     def reload_rules(self) -> None:
         self.rules, self.whitelist = load_rules()
+        self._append_dynamic_whitelist()
         logger.info("Reglas SIEM recargadas dinámicamente")

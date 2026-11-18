@@ -38,7 +38,8 @@ import uvicorn
 
 from config import (
     HOST, PORT, SECRET_KEY, LOG_DIR, PCAP_DIR, TSHARK_PATH,
-    ADMIN_USER, SESSION_EXPIRE_SECS, MAX_FAILED_LOGINS, LOCKOUT_SECS, LOCAL_HOST_IP
+    ADMIN_USER, SESSION_EXPIRE_SECS, MAX_FAILED_LOGINS, LOCKOUT_SECS, LOCAL_HOST_IP,
+    FRONTEND_DIR, IS_FROZEN,
 )
 from collectors import MultiSourceCollectorManager, normalize_event, validate_ip
 from correlator import CorrelationEngine, recent_alerts_history, recent_events_history
@@ -55,13 +56,16 @@ from soc_tools import (
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 PCAP_DIR.mkdir(parents=True, exist_ok=True)
 
+_log_handlers: list[logging.Handler] = [
+    logging.FileHandler(LOG_DIR / "nettrap.log", encoding="utf-8"),
+]
+if sys.stderr is not None:
+    _log_handlers.insert(0, logging.StreamHandler())
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(LOG_DIR / "nettrap.log", encoding="utf-8"),
-    ],
+    handlers=_log_handlers,
 )
 logger = logging.getLogger("nettrap.api")
 errors_logger = logging.getLogger("nettrap.errors")
@@ -107,8 +111,8 @@ app = FastAPI(
     redoc_url=None,
 )
 
-FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
-(FRONTEND_DIR / "static").mkdir(parents=True, exist_ok=True)
+if not IS_FROZEN:
+    (FRONTEND_DIR / "static").mkdir(parents=True, exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(FRONTEND_DIR / "templates"))
 
@@ -118,27 +122,39 @@ async def audit_external_traffic(request: Request, call_next):
     client_ip = request.client.host if request.client and request.client.host else "127.0.0.1"
     # No auditar las propias peticiones del operador local o cliente de prueba
     if client_ip and client_ip not in ("127.0.0.1", "::1", "localhost", "testclient", "192.168.88.234"):
+        if is_ip_blocked(client_ip):
+            return JSONResponse(
+                status_code=403,
+                content={"detail": f"Acceso denegado: IP {client_ip} en cuarentena activa por NetTrap-IPS."}
+            )
         path = request.url.path
         if not path.startswith("/static"):
             ua = request.headers.get("user-agent", "")
-            is_probe = (
-                path in ("/login", "/", "/api/simulate", "/api/block")
-                or any(k in path.lower() for k in ("nmap", "sdk", "hnap", "evox", ".env", "admin", "config", "backup"))
-                or any(k in ua.lower() for k in ("nmap", "nikto", "sqlmap", "curl", "python", "hydra", "gobuster", "dirbuster"))
+            ua_low = ua.lower()
+            path_low = path.lower()
+            query_low = (request.url.query or "").lower()
+
+            is_scanner_ua = any(
+                k in ua_low
+                for k in ("nmap", "nikto", "sqlmap", "curl", "python", "hydra", "gobuster", "dirbuster", "wfuzz", "masscan", "${jndi:")
             )
-            ua_short = ua[:40] if ua else "Sin User-Agent"
-            normalize_event(
-                origen="network_traffic",
-                severidad="HIGH" if is_probe else "MEDIUM",
-                evento=f"Sondeo HTTP [{request.method} {path}]",
-                ip_origen=client_ip,
-                descripcion=f"Petición HTTP {request.method} {path} desde {client_ip} (UA: {ua_short}) hacia puerto 8000",
-                puerto=8000
+            is_suspicious_path = (
+                (request.method == "POST" and path_low == "/login")
+                or any(
+                    k in path_low or k in query_low
+                    for k in ("nmap", "sdk", "hnap", "evox", ".env", "wp-admin", "admin", "config", "backup", "${jndi:", "union select", "' or ", "../")
+                )
             )
-            if is_ip_blocked(client_ip):
-                return JSONResponse(
-                    status_code=403,
-                    content={"detail": f"Acceso denegado: IP {client_ip} en cuarentena activa por NetTrap-IPS."}
+
+            if is_scanner_ua or is_suspicious_path:
+                ua_short = ua[:40] if ua else "Sin User-Agent"
+                normalize_event(
+                    origen="network_traffic",
+                    severidad="HIGH",
+                    evento=f"Sondeo HTTP [{request.method} {path}]",
+                    ip_origen=client_ip,
+                    descripcion=f"Petición HTTP {request.method} {path} desde {client_ip} (UA: {ua_short}) hacia puerto {PORT}",
+                    puerto=PORT,
                 )
     return await call_next(request)
 
@@ -408,6 +424,18 @@ async def api_clear(session=Depends(require_auth)):
 
 
 # ── APIs REST Operativas (Zero Trust Authenticated) ───────────────────────────
+@app.get("/api/health")
+async def api_health():
+    """Sonda liviana para verificar si el servidor NetTrap-IPS está activo."""
+    return JSONResponse({
+        "status": "ok",
+        "app": "NetTrap-IPS",
+        "version": "3.2.0",
+        "port": PORT,
+        "pid": os.getpid(),
+    })
+
+
 @app.get("/api/sources")
 async def api_sources(session=Depends(require_auth)):
     """Retorna el estado de las 3 fuentes reales de Windows (RF-01)."""
@@ -796,4 +824,5 @@ def _audit_auth(action: str, user: str, ip: str) -> None:
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host=HOST, port=PORT, reload=False, log_level="info")
+    _log_cfg = None if sys.stderr is None else uvicorn.config.LOGGING_CONFIG
+    uvicorn.run(app, host=HOST, port=PORT, reload=False, log_level="info", log_config=_log_cfg)

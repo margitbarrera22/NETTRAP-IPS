@@ -24,13 +24,45 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-from config import QUEUE_MAX_SIZE, LOG_DIR
+from config import QUEUE_MAX_SIZE, LOG_DIR, SUBPROC_FLAGS, get_default_gateway
+from mitigator import is_ip_blocked
 
 logger = logging.getLogger("nettrap.collectors")
 errors_logger = logging.getLogger("nettrap.errors")
 
 # Cola centralizada de ingesta de eventos (Buffer Limit DoS protection - ISO 27033-1 Cl. 10.2)
 event_queue: queue.Queue = queue.Queue(maxsize=QUEUE_MAX_SIZE)
+
+# Tráfico normal de descubrimiento en LAN/Wi-Fi que no debe generar falsas alarmas IPS
+FIREWALL_ALLOWED_PROTOCOLS = {"TCP", "UDP"}
+LAN_DISCOVERY_PORTS = {67, 68, 137, 138, 546, 547, 1900, 3702, 5353, 5355}
+UDP_INFRA_PORTS = {53, 123}
+
+
+def _is_multicast_or_broadcast(ip_str: str) -> bool:
+    """Retorna True si la IP corresponde a multicast, broadcast o dirección no especificada."""
+    try:
+        ip_obj = ipaddress.ip_address(ip_str)
+    except ValueError:
+        return True
+    if ip_obj.is_multicast or ip_obj.is_unspecified:
+        return True
+    if ip_obj.version == 4:
+        s = str(ip_obj)
+        if s == "255.255.255.255" or s.endswith(".255"):
+            return True
+    return False
+
+
+def _is_non_attack_ip(ip_str: str) -> bool:
+    """Filtra IPs locales de enlace (fe80::/169.254), loopback, multicast y broadcast."""
+    try:
+        ip_obj = ipaddress.ip_address(ip_str)
+    except ValueError:
+        return True
+    if ip_obj.is_loopback or ip_obj.is_link_local:
+        return True
+    return _is_multicast_or_broadcast(ip_str)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -119,7 +151,7 @@ class WindowsEventLogCollector(threading.Thread):
             "/f:xml", "/c:15", "/rd:true"
         ]
         try:
-            res = subprocess.run(cmd_xml, capture_output=True, timeout=5, check=False)
+            res = subprocess.run(cmd_xml, capture_output=True, timeout=5, check=False, creationflags=SUBPROC_FLAGS)
             if res.returncode == 0 and res.stdout:
                 xml_text = res.stdout.decode("utf-8", errors="ignore")
                 if "<Event" in xml_text:
@@ -134,7 +166,7 @@ class WindowsEventLogCollector(threading.Thread):
             "/f:text", "/c:10", "/rd:true"
         ]
         try:
-            res = subprocess.run(cmd_txt, capture_output=True, timeout=5, check=False)
+            res = subprocess.run(cmd_txt, capture_output=True, timeout=5, check=False, creationflags=SUBPROC_FLAGS)
             if res.returncode == 0 and res.stdout:
                 text = res.stdout.decode("cp1252", errors="ignore")
                 self._parse_wevtutil_output(text)
@@ -225,6 +257,15 @@ class WindowsFirewallCollector(threading.Thread):
     """
 
     DEFAULT_LOG = Path(r"C:\Windows\System32\LogFiles\Firewall\pfirewall.log")
+    DEFAULT_FIELDS = {
+        "action": 2,
+        "protocol": 3,
+        "src-ip": 4,
+        "dst-ip": 5,
+        "src-port": 6,
+        "dst-port": 7,
+        "path": 16,
+    }
 
     def __init__(self, log_path: Path = None, poll_interval: float = 3.0):
         super().__init__(daemon=True, name="Collector-WinFirewall")
@@ -232,11 +273,23 @@ class WindowsFirewallCollector(threading.Thread):
         self.poll_interval = poll_interval
         self._stop_evt = threading.Event()
         self._last_pos = 0
+        self._field_map: dict[str, int] = dict(self.DEFAULT_FIELDS)
+        self._gateway_ip: str | None = get_default_gateway()
+        self._last_gw_refresh = time.time()
+
+    def _parse_fields_line(self, line: str) -> None:
+        if line.lower().startswith("#fields:"):
+            cols = line.split(":", 1)[1].strip().split()
+            if cols:
+                self._field_map = {col.lower(): idx for idx, col in enumerate(cols)}
 
     def run(self) -> None:
         logger.info("WindowsFirewallCollector iniciado (Log: %s)", self.log_path)
         while not self._stop_evt.is_set():
             try:
+                if time.time() - self._last_gw_refresh > 60:
+                    self._gateway_ip = get_default_gateway()
+                    self._last_gw_refresh = time.time()
                 if self.log_path.exists():
                     self._read_new_firewall_lines()
             except Exception as exc:
@@ -247,35 +300,90 @@ class WindowsFirewallCollector(threading.Thread):
         try:
             with open(self.log_path, "r", encoding="utf-8", errors="ignore") as f:
                 if self._last_pos == 0:
+                    header_chunk = f.read(4096)
+                    for hline in header_chunk.splitlines():
+                        if hline.startswith("#Fields:"):
+                            self._parse_fields_line(hline)
                     f.seek(0, 2)  # Ir al final para no procesar todo el histórico viejo
                     self._last_pos = f.tell()
                     return
+
+                f.seek(0, 2)
+                file_size = f.tell()
+                if file_size < self._last_pos:
+                    # Archivo rotado o truncado por Windows Firewall
+                    self._last_pos = 0
 
                 f.seek(self._last_pos)
                 lines = f.readlines()
                 self._last_pos = f.tell()
 
+                idx_action = self._field_map.get("action", 2)
+                idx_proto = self._field_map.get("protocol", 3)
+                idx_src = self._field_map.get("src-ip", 4)
+                idx_dst = self._field_map.get("dst-ip", 5)
+                idx_dport = self._field_map.get("dst-port", 7)
+                idx_path = self._field_map.get("path", 16)
+
                 for line in lines:
                     line = line.strip()
-                    if not line or line.startswith("#"):
+                    if not line:
                         continue
-                    parts = line.split()
-                    # Formato pfirewall.log: date time action protocol src-ip dst-ip src-port dst-port ...
-                    if len(parts) >= 8:
-                        action = parts[2].upper()  # DROP o ALLOW
-                        proto  = parts[3]
-                        src_ip = parts[4]
-                        dst_port = parts[7]
+                    if line.startswith("#"):
+                        if line.lower().startswith("#fields:"):
+                            self._parse_fields_line(line)
+                        continue
 
-                        if action == "DROP":
-                            normalize_event(
-                                origen="windows_firewall",
-                                severidad="HIGH",
-                                evento=f"Paquete Bloqueado por Firewall ({proto} DROP)",
-                                ip_origen=src_ip,
-                                descripcion=f"Intento de conexión bloqueado por Windows Defender Firewall hacia puerto {dst_port}",
-                                puerto=int(dst_port) if dst_port.isdigit() else 0
-                            )
+                    parts = line.split()
+                    if len(parts) <= max(idx_action, idx_proto, idx_src, idx_dst, idx_dport):
+                        continue
+
+                    action = parts[idx_action].upper()
+                    if action != "DROP":
+                        continue
+
+                    # Solo tráfico entrante (RECEIVE); descartar paquetes salientes (SEND/FORWARD)
+                    if len(parts) > idx_path:
+                        direction = parts[idx_path].upper()
+                        if direction not in ("RECEIVE", "-"):
+                            continue
+
+                    proto = parts[idx_proto].upper()
+                    if proto not in FIREWALL_ALLOWED_PROTOCOLS:
+                        continue
+
+                    valid_src = validate_ip(parts[idx_src])
+                    if not valid_src or _is_non_attack_ip(valid_src):
+                        continue
+                    if self._gateway_ip and valid_src == self._gateway_ip:
+                        continue
+                    if is_ip_blocked(valid_src):
+                        continue
+
+                    valid_dst = validate_ip(parts[idx_dst])
+                    if valid_dst:
+                        try:
+                            dst_obj = ipaddress.ip_address(valid_dst)
+                            if dst_obj.is_link_local or _is_multicast_or_broadcast(valid_dst):
+                                continue
+                        except ValueError:
+                            pass
+
+                    dst_port_raw = parts[idx_dport]
+                    dst_port = int(dst_port_raw) if dst_port_raw.isdigit() else 0
+                    if dst_port in LAN_DISCOVERY_PORTS:
+                        continue
+                    if proto == "UDP" and dst_port in UDP_INFRA_PORTS:
+                        continue
+
+                    normalize_event(
+                        origen="windows_firewall",
+                        severidad="HIGH",
+                        evento=f"Paquete Bloqueado por Firewall ({proto} DROP)",
+                        ip_origen=valid_src,
+                        descripcion=f"Intento de conexión entrante bloqueado por Windows Defender Firewall hacia puerto {dst_port}",
+                        puerto=dst_port
+                    )
         except Exception:
             pass
 
@@ -317,7 +425,7 @@ class NetworkTrafficCollector(threading.Thread):
     def _inspect_active_connections(self) -> None:
         """Ejecuta netstat para recolectar conexiones entrantes hacia servicios del host."""
         try:
-            res = subprocess.run(["netstat", "-a", "-n", "-p", "tcp"], capture_output=True, timeout=4, check=False)
+            res = subprocess.run(["netstat", "-a", "-n", "-p", "tcp"], capture_output=True, timeout=4, check=False, creationflags=SUBPROC_FLAGS)
             if res.returncode != 0 or not res.stdout:
                 return
 
@@ -365,7 +473,12 @@ class NetworkTrafficCollector(threading.Thread):
 
                             if conn_key not in self._seen_connections:
                                 valid = validate_ip(remote_ip)
-                                if valid and valid not in ("127.0.0.1", "::1", "192.168.88.234"):
+                                if (
+                                    valid
+                                    and not _is_non_attack_ip(valid)
+                                    and valid != "192.168.88.234"
+                                    and not is_ip_blocked(valid)
+                                ):
                                     normalize_event(
                                         origen="network_traffic",
                                         severidad="MEDIUM" if state == "ESTABLISHED" else "HIGH",

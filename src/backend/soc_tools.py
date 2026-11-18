@@ -14,6 +14,7 @@ import re
 import shutil
 import socket
 import subprocess
+import sys
 import time
 from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -21,6 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from collectors import WindowsFirewallCollector, validate_ip
+from config import IS_FROZEN, SUBPROC_FLAGS, get_default_gateway
 
 logger = logging.getLogger("nettrap.tools")
 
@@ -88,7 +90,11 @@ def _check_is_admin() -> dict:
         "ok": False,
         "status_label": "REQUIERE ATENCIÓN",
         "detail": "Sin elevación UAC: Windows bloquea la lectura de Security.evtx y las reglas netsh.",
-        "recommendation": "Cierra y vuelve a abrir start.bat con clic derecho -> Ejecutar como administrador.",
+        "recommendation": (
+            "Cierra NetTrap-IPS desde la bandeja del sistema y ábrelo con clic derecho -> Ejecutar como administrador."
+            if IS_FROZEN
+            else "Cierra y vuelve a abrir start.bat con clic derecho -> Ejecutar como administrador."
+        ),
     }
 
 
@@ -117,6 +123,7 @@ def _check_firewall_log() -> dict:
                 capture_output=True,
                 timeout=4,
                 check=False,
+                creationflags=SUBPROC_FLAGS,
             )
             out = res.stdout.decode("cp1252", errors="ignore").lower()
             if re.search(r"(?:droppedconnections|descartadas)\s+(?:enable|habilitad|s[ií])", out):
@@ -141,7 +148,11 @@ def _check_firewall_log() -> dict:
         "ok": False,
         "status_label": "INACTIVO / RESTRINGIDO",
         "detail": f"No se pudo leer {log_path} o droppedconnections está deshabilitado.",
-        "recommendation": "Ejecuta start.bat como Administrador para activar LogDroppedConnections.",
+        "recommendation": (
+            "Ejecuta NetTrap-IPS como Administrador para activar LogDroppedConnections automáticamente."
+            if IS_FROZEN
+            else "Ejecuta start.bat como Administrador para activar LogDroppedConnections."
+        ),
     }
 
 
@@ -162,6 +173,7 @@ def _check_event_log_4625() -> dict:
             capture_output=True,
             timeout=4,
             check=False,
+            creationflags=SUBPROC_FLAGS,
         )
         if res.returncode == 0:
             return {
@@ -630,21 +642,8 @@ def render_executive_report_html(
 # 3. Radar de Red Local (Equipos en la LAN)
 # ─────────────────────────────────────────────────────────────────────────────
 def _get_default_gateway() -> str | None:
-    """Detecta la puerta de enlace por defecto en Windows mediante route print."""
-    if os.name != "nt":
-        return None
-    try:
-        res = subprocess.run(["route", "print", "0.0.0.0"], capture_output=True, timeout=4, check=False)
-        text = res.stdout.decode("cp1252", errors="ignore")
-        for line in text.splitlines():
-            parts = line.split()
-            if len(parts) >= 4 and parts[0] == "0.0.0.0" and parts[1] == "0.0.0.0":
-                gw = validate_ip(parts[2])
-                if gw:
-                    return gw
-    except Exception:
-        pass
-    return None
+    """Detecta la puerta de enlace por defecto en Windows mediante config.get_default_gateway."""
+    return get_default_gateway()
 
 
 def _nudge_subnet_arp(local_ip: str) -> str:
@@ -711,7 +710,7 @@ def scan_local_network(local_host_ip: str, blocked_ips: list, whitelist: list[st
         }
 
     try:
-        res = subprocess.run(["arp", "-a"], capture_output=True, timeout=4, check=False)
+        res = subprocess.run(["arp", "-a"], capture_output=True, timeout=4, check=False, creationflags=SUBPROC_FLAGS)
         raw = res.stdout or b""
         text = raw.decode("cp850", errors="ignore")
         current_iface = None
